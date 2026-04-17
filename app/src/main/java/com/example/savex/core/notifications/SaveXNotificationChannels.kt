@@ -10,11 +10,14 @@ object SaveXNotificationChannels {
     const val GENERAL_UPDATES = "general_updates"
 
     fun create(context: Context) {
-//        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-//            return
-//        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return
+        }
 
-        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                ?: return
+
         val channels = listOf(
             NotificationChannel(
                 REVIEW_REMINDERS,
