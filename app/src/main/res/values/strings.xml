@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">SaveX</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_starred">Starred</string>
+    <string name="nav_collections">Collections</string>
+    <string name="nav_archived">Archived</string>
 </resources>

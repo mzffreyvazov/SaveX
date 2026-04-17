@@ -1,0 +1,353 @@
+package com.example.savex.ui
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.CollectionsBookmark
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.InsertChartOutlined
+import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
+
+private const val ROUTE_HOME = "home"
+private const val ROUTE_STARRED = "starred"
+private const val ROUTE_COLLECTIONS = "collections"
+private const val ROUTE_ARCHIVED = "archived"
+private const val ROUTE_SAVE = "save"
+
+private data class TopLevelDestination(
+    val route: String,
+    val title: String,
+    val icon: ImageVector,
+)
+
+private data class DrawerDestination(
+    val title: String,
+    val icon: ImageVector,
+)
+
+private val topLevelDestinations = listOf(
+    TopLevelDestination(ROUTE_HOME, "Home", Icons.Outlined.Home),
+    TopLevelDestination(ROUTE_STARRED, "Starred", Icons.Outlined.StarOutline),
+    TopLevelDestination(ROUTE_COLLECTIONS, "Collections", Icons.Outlined.CollectionsBookmark),
+    TopLevelDestination(ROUTE_ARCHIVED, "Archived", Icons.Outlined.Archive),
+)
+
+private val drawerDestinations = listOf(
+    DrawerDestination("Tags", Icons.Outlined.Label),
+    DrawerDestination("Snoozed", Icons.Outlined.Bedtime),
+    DrawerDestination("Bin", Icons.Outlined.Delete),
+    DrawerDestination("My stats", Icons.Outlined.InsertChartOutlined),
+    DrawerDestination("Sync status", Icons.Outlined.Sync),
+    DrawerDestination("Settings", Icons.Outlined.Settings),
+    DrawerDestination("Help and feedback", Icons.Outlined.HelpOutline),
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SaveXApp(
+    sharedText: String?,
+    onSharedTextConsumed: () -> Unit,
+) {
+    val navController = rememberNavController()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val drawerState = androidx.compose.material3.rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    var showCreateCollectionDialog by rememberSaveable { mutableStateOf(false) }
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = backStackEntry?.destination
+    val currentTitle = topLevelDestinations.firstOrNull { it.route == currentDestination?.route }?.title
+        ?: if (currentDestination?.route == ROUTE_SAVE) "Save item" else "SaveX"
+
+    LaunchedEffect(sharedText) {
+        if (!sharedText.isNullOrBlank()) {
+            navController.navigate(ROUTE_SAVE)
+            snackbarHostState.showSnackbar("Shared content loaded into Save.")
+            onSharedTextConsumed()
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Text(
+                    text = "SaveX",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
+                )
+                drawerDestinations.forEachIndexed { index, destination ->
+                    if (index == 2 || index == 5) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                    NavigationDrawerItem(
+                        label = { Text(destination.title) },
+                        icon = { Icon(destination.icon, contentDescription = null) },
+                        selected = false,
+                        onClick = { },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                    )
+                }
+            }
+        },
+    ) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            topBar = {
+                TopAppBar(
+                    title = { Text(currentTitle) },
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { }) {
+                            Icon(Icons.Outlined.Search, contentDescription = "Search")
+                        }
+                        IconButton(onClick = { }) {
+                            Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
+                        }
+                    },
+                )
+            },
+            bottomBar = {
+                BottomAppBar {
+                    topLevelDestinations.forEach { destination ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                navController.navigate(destination.route) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(destination.icon, contentDescription = destination.title) },
+                            label = { Text(destination.title) },
+                        )
+                    }
+                }
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        if (currentDestination?.route == ROUTE_SAVE) {
+                            showCreateCollectionDialog = true
+                        } else {
+                            navController.navigate(ROUTE_SAVE)
+                        }
+                    },
+                ) {
+                    Icon(
+                        imageVector = if (currentDestination?.route == ROUTE_SAVE) {
+                            Icons.Outlined.CreateNewFolder
+                        } else {
+                            Icons.Outlined.Add
+                        },
+                        contentDescription = null,
+                    )
+                }
+            },
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = ROUTE_HOME,
+                modifier = Modifier.padding(innerPadding),
+            ) {
+                composable(ROUTE_HOME) {
+                    LibraryPlaceholderScreen(
+                        title = "Home",
+                        subtitle = "Recent items appear here first. This is the main inbox for content you save.",
+                        items = listOf(
+                            "Saved links sorted by created date",
+                            "Quick glance cards for title, type, tags, and collection",
+                            "Primary place to resume processing",
+                        ),
+                    )
+                }
+                composable(ROUTE_STARRED) {
+                    LibraryPlaceholderScreen(
+                        title = "Starred",
+                        subtitle = "High-priority collections and items will live here.",
+                        items = listOf(
+                            "Starred collections pinned first",
+                            "Starred individual items below",
+                            "Fast path for what matters most",
+                        ),
+                    )
+                }
+                composable(ROUTE_COLLECTIONS) {
+                    LibraryPlaceholderScreen(
+                        title = "Collections",
+                        subtitle = "Folders become the primary organizational layer for saved content.",
+                        items = listOf(
+                            "Folder-first browsing",
+                            "Collection-level reminders",
+                            "Easy grouping for themes and projects",
+                        ),
+                    )
+                }
+                composable(ROUTE_ARCHIVED) {
+                    LibraryPlaceholderScreen(
+                        title = "Archived",
+                        subtitle = "Archived collections and items stay searchable without cluttering the active library.",
+                        items = listOf(
+                            "Archived collections pinned first",
+                            "Archived items underneath",
+                            "Safe soft-delete workflow later",
+                        ),
+                    )
+                }
+                composable(ROUTE_SAVE) {
+                    SaveScreen(
+                        initialSharedText = sharedText,
+                        onCreateCollection = { showCreateCollectionDialog = true },
+                    )
+                }
+            }
+        }
+    }
+
+    if (showCreateCollectionDialog) {
+        CreateCollectionDialog(
+            onDismiss = { showCreateCollectionDialog = false },
+            onCreate = { showCreateCollectionDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun LibraryPlaceholderScreen(
+    title: String,
+    subtitle: String,
+    items: List<String>,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        items(items) { item ->
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(text = item, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "Scaffolded as part of the initial project setup so we can replace placeholders feature by feature.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateCollectionDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit,
+) {
+    var name by rememberSaveable { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Create collection") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Collection name") },
+                singleLine = true,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreate(name.trim()) },
+                enabled = name.isNotBlank(),
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
