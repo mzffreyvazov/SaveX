@@ -1,5 +1,6 @@
 ﻿package com.example.savex.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,9 +20,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
@@ -31,7 +32,8 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.VideoLibrary
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,6 +56,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.savex.ui.theme.PocketCoral
 
 private data class ReviewTodayItemUi(
     val title: String,
@@ -86,7 +89,7 @@ private val reviewTodayItems = listOf(
         title = "The Architecture of a Modern Android App",
         source = "medium.com",
         imageUrl = "https://images.unsplash.com/photo-1607252650355-f7fd0460ccdb?w=400&h=200&fit=crop",
-        sheetIcon = Icons.Outlined.Article,
+        sheetIcon = Icons.AutoMirrored.Outlined.Article,
     ),
     ReviewTodayItemUi(
         title = "PostgreSQL JSONB Tutorial",
@@ -103,7 +106,7 @@ private val recentlySavedItems = listOf(
         tag = "#android",
         savedAt = "2h ago",
         thumbnailUrl = "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=100&h=100&fit=crop",
-        thumbnailIcon = Icons.Outlined.Article,
+        thumbnailIcon = Icons.AutoMirrored.Outlined.Article,
     ),
     RecentlySavedItemUi(
         title = "Spring Boot 3 + JWT Auth",
@@ -144,11 +147,11 @@ fun HomeScreen(
     if (selectedSheetTarget != null) {
         ModalBottomSheet(
             onDismissRequest = { selectedSheetTarget = null },
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         ) {
             HomeSheetHeader(
                 title = selectedSheetTarget?.title.orEmpty(),
-                icon = selectedSheetTarget?.icon ?: Icons.Outlined.Article,
+                icon = selectedSheetTarget?.icon ?: Icons.AutoMirrored.Outlined.Article,
             )
             HorizontalDivider()
 
@@ -174,7 +177,7 @@ fun HomeScreen(
                         )
                         Text(
                             text = action.title,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.labelLarge,
                             color = if (isDeleteAction) {
                                 MaterialTheme.colorScheme.error
                             } else {
@@ -261,10 +264,14 @@ private fun SectionHeader(
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         TextButton(onClick = onActionClick) {
-            Text(actionLabel)
+            Text(
+                text = actionLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
@@ -274,9 +281,11 @@ private fun ReviewTodayCard(
     item: ReviewTodayItemUi,
     onMoreClick: () -> Unit,
 ) {
-    ElevatedCard(
+    Card(
         modifier = Modifier.width(240.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Box(
@@ -301,7 +310,8 @@ private fun ReviewTodayCard(
             ) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -313,7 +323,7 @@ private fun ReviewTodayCard(
                 ) {
                     Text(
                         text = item.source,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     IconButton(onClick = onMoreClick, modifier = Modifier.size(32.dp)) {
@@ -330,9 +340,17 @@ private fun RecentlySavedCard(
     item: RecentlySavedItemUi,
     onMoreClick: () -> Unit,
 ) {
-    ElevatedCard(
+    val thumbnailContainerColor = if (item.thumbnailUrl != null) {
+        MaterialTheme.colorScheme.surfaceVariant
+    } else {
+        PocketCoral.copy(alpha = 0.12f)
+    }
+
+    Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Row(
             modifier = Modifier
@@ -345,7 +363,7 @@ private fun RecentlySavedCard(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(thumbnailContainerColor),
                 contentAlignment = Alignment.Center,
             ) {
                 if (item.thumbnailUrl != null) {
@@ -359,7 +377,7 @@ private fun RecentlySavedCard(
                     Icon(
                         imageVector = item.thumbnailIcon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = PocketCoral,
                         modifier = Modifier.size(30.dp),
                     )
                 }
@@ -380,13 +398,14 @@ private fun RecentlySavedCard(
                     ) {
                         Text(
                             text = item.title,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             text = item.source,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -427,7 +446,7 @@ private fun RecentlySavedCard(
 
                     Text(
                         text = item.savedAt,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -465,7 +484,7 @@ private fun HomeSheetHeader(
 
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

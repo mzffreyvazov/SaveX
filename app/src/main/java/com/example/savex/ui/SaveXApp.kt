@@ -1,11 +1,13 @@
 package com.example.savex.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,16 +31,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.InsertChartOutlined
-import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.PersonOutline
@@ -46,10 +49,10 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -59,6 +62,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -78,7 +82,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
@@ -117,13 +123,13 @@ private val topLevelDestinations = listOf(
 )
 
 private val drawerDestinations = listOf(
-    DrawerDestination("Tags", Icons.Outlined.Label),
+    DrawerDestination("Tags", Icons.AutoMirrored.Outlined.Label),
     DrawerDestination("Snoozed", Icons.Outlined.Bedtime),
     DrawerDestination("Bin", Icons.Outlined.Delete),
     DrawerDestination("My stats", Icons.Outlined.InsertChartOutlined),
     DrawerDestination("Sync status", Icons.Outlined.Sync),
     DrawerDestination("Settings", Icons.Outlined.Settings),
-    DrawerDestination("Help and feedback", Icons.Outlined.HelpOutline),
+    DrawerDestination("Help and feedback", Icons.AutoMirrored.Outlined.HelpOutline),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -161,10 +167,13 @@ fun SaveXApp(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                drawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+            ) {
                 Text(
                     text = "SaveX",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
                 )
                 drawerDestinations.forEachIndexed { index, destination ->
@@ -183,6 +192,7 @@ fun SaveXApp(
         },
     ) {
         Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
                 if (isHomeDestination) {
@@ -212,7 +222,11 @@ fun SaveXApp(
                 }
             },
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    modifier = Modifier.height(72.dp),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp,
+                ) {
                     topLevelDestinations.forEach { destination ->
                         val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
                         NavigationBarItem(
@@ -225,8 +239,21 @@ fun SaveXApp(
                                     restoreState = true
                                 }
                             },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            ),
                             icon = { Icon(destination.icon, contentDescription = destination.title) },
-                            label = { Text(destination.title) },
+                            label = {
+                                Text(
+                                    text = destination.title,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                                )
+                            },
                         )
                     }
                 }
@@ -302,7 +329,7 @@ fun SaveXApp(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
+                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
                             .clickable(
                                 interactionSource = overlayInteractionSource,
                                 indication = null,
@@ -328,10 +355,29 @@ private fun HomeTopBar(
     onOpenDrawer: () -> Unit,
     onProfileClick: () -> Unit,
 ) {
+    var isSearchFocused by remember { mutableStateOf(false) }
+    val searchContainerColor by animateColorAsState(
+        targetValue = if (isSearchFocused) {
+            MaterialTheme.colorScheme.surface
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
+        label = "searchContainerColor",
+    )
+    val searchBorderColor by animateColorAsState(
+        targetValue = if (isSearchFocused) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            Color.Transparent
+        },
+        label = "searchBorderColor",
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, top = 6.dp, end = 12.dp, bottom = 8.dp),
+            .statusBarsPadding()
+            .padding(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -344,8 +390,8 @@ private fun HomeTopBar(
                 .weight(1f)
                 .height(46.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 1.dp,
+            color = searchContainerColor,
+            border = BorderStroke(1.dp, searchBorderColor),
         ) {
             BasicTextField(
                 value = query,
@@ -359,6 +405,7 @@ private fun HomeTopBar(
                 ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
+                    .onFocusChanged { isSearchFocused = it.isFocused }
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 decorationBox = { innerTextField ->
@@ -379,8 +426,24 @@ private fun HomeTopBar(
             )
         }
 
-        FilledTonalIconButton(onClick = onProfileClick, modifier = Modifier.size(42.dp)) {
-            Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
+        Surface(
+            modifier = Modifier.size(42.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            border = BorderStroke(1.dp, Color(0xFFD1D5DB)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(onClick = onProfileClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.PersonOutline,
+                    contentDescription = "Profile",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
     }
 }
@@ -425,6 +488,8 @@ private fun HomeFabMenu(
 
         FloatingActionButton(
             onClick = onToggleExpanded,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = if (expanded) CircleShape else RoundedCornerShape(16.dp),
         ) {
             Icon(
@@ -448,7 +513,8 @@ private fun FabMenuActionButton(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        tonalElevation = 0.dp,
         shadowElevation = 4.dp,
     ) {
         Row(
@@ -493,7 +559,12 @@ private fun LibraryPlaceholderScreen(
         }
 
         items(items) { item ->
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),

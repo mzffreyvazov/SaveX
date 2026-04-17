@@ -1,37 +1,53 @@
 package com.example.savex.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Podcasts
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 private data class ItemTypeUi(
@@ -41,7 +57,7 @@ private data class ItemTypeUi(
 
 private val defaultItemTypes = listOf(
     ItemTypeUi("Video", Icons.Outlined.VideoLibrary),
-    ItemTypeUi("Article", Icons.Outlined.Article),
+    ItemTypeUi("Article", Icons.AutoMirrored.Outlined.Article),
     ItemTypeUi("Podcast", Icons.Outlined.Podcasts),
     ItemTypeUi("Social", Icons.Outlined.Tag),
 )
@@ -91,8 +107,17 @@ fun SaveScreen(
                 value = title,
                 onValueChange = { title = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Title") },
+                placeholder = { Text("Title") },
+                textStyle = MaterialTheme.typography.headlineMedium,
                 minLines = 2,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    disabledBorderColor = Color.Transparent,
+                ),
             )
         }
 
@@ -101,13 +126,27 @@ fun SaveScreen(
                 value = notes,
                 onValueChange = { notes = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Notes") },
+                placeholder = { Text("Notes") },
+                textStyle = MaterialTheme.typography.bodyLarge,
                 minLines = 5,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    disabledBorderColor = Color.Transparent,
+                ),
             )
         }
 
         item {
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -118,17 +157,33 @@ fun SaveScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         defaultItemTypes.forEach { type ->
+                            val isSelected = selectedType == type.title
                             FilterChip(
-                                selected = selectedType == type.title,
+                                selected = isSelected,
                                 onClick = { selectedType = type.title },
                                 label = { Text(type.title) },
                                 leadingIcon = { Icon(type.icon, contentDescription = null) },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    selectedLabelColor = MaterialTheme.colorScheme.primary,
+                                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = MaterialTheme.colorScheme.outline,
+                                    selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                    borderWidth = 1.dp,
+                                    selectedBorderWidth = 1.dp,
+                                ),
                             )
                         }
-                        AssistChip(
+                        DashedCustomTypeChip(
                             onClick = { },
-                            label = { Text("Custom") },
-                            leadingIcon = { Icon(Icons.Outlined.Add, contentDescription = null) },
                         )
                     }
                 }
@@ -136,7 +191,12 @@ fun SaveScreen(
         }
 
         item {
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -177,7 +237,12 @@ fun SaveScreen(
         }
 
         item {
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -194,5 +259,52 @@ fun SaveScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DashedCustomTypeChip(
+    onClick: () -> Unit,
+) {
+    val chipShape = RoundedCornerShape(10.dp)
+    val chipBorderColor = MaterialTheme.colorScheme.outline
+
+    Row(
+        modifier = Modifier
+            .clip(chipShape)
+            .clickable(onClick = onClick)
+            .drawBehind {
+                val strokeWidth = 1.dp.toPx()
+                val corner = 10.dp.toPx()
+                drawRoundRect(
+                    color = chipBorderColor,
+                    size = size,
+                    cornerRadius = CornerRadius(corner, corner),
+                    style = Stroke(
+                        width = strokeWidth,
+                        pathEffect = PathEffect.dashPathEffect(
+                            intervals = floatArrayOf(8.dp.toPx(), 6.dp.toPx()),
+                            phase = 0f,
+                        ),
+                    ),
+                )
+            }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = "Custom",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

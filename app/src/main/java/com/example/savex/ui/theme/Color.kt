@@ -2,13 +2,22 @@ package com.example.savex.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Slate900 = Color(0xFF102A43)
-val Slate700 = Color(0xFF334E68)
-val Slate500 = Color(0xFF627D98)
-val Slate100 = Color(0xFFD9E2EC)
-val Slate050 = Color(0xFFF7FAFC)
+val PocketTeal = Color(0xFF00A19B)
+val PocketTealDark = Color(0xFF008580)
+val PocketTealSoft = Color(0x1A00A19B)
+val PocketCoral = Color(0xFFEF4056)
 
-val Teal500 = Color(0xFF0F9D8A)
-val Teal700 = Color(0xFF0A6C61)
-val Coral500 = Color(0xFFE05D44)
-val White = Color(0xFFFFFFFF)
+val BgApp = Color(0xFFF9FAFB)
+val BgCard = Color(0xFFFFFFFF)
+val SearchSurface = Color(0xFFEAECEF)
+
+val TextMain = Color(0xFF1F2937)
+val TextMuted = Color(0xFF6B7280)
+val TextSubtle = Color(0xFF9CA3AF)
+
+val StarYellow = Color(0xFFFACC15)
+val DangerRed = Color(0xFFDC2626)
+val BorderLight = Color(0xFFE5E7EB)
+
+val SegmentedActiveBg = Color(0xFFD3E3FD)
+val SegmentedActiveText = Color(0xFF041E49)
