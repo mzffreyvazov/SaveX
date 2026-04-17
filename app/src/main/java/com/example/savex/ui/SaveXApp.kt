@@ -1,7 +1,6 @@
 package com.example.savex.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,14 +21,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Label
@@ -51,6 +48,7 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -66,12 +64,15 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,12 +83,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -132,6 +129,19 @@ private val drawerDestinations = listOf(
     DrawerDestination("Help and feedback", Icons.AutoMirrored.Outlined.HelpOutline),
 )
 
+private val homeSearchCatalog = listOf(
+    "The Architecture of a Modern Android App",
+    "PostgreSQL JSONB Tutorial",
+    "10 Best Jetpack Compose Tips",
+    "Spring Boot 3 + JWT Auth",
+    "Review Today",
+    "Recently Saved",
+    "Tags",
+    "Snoozed",
+    "Collections",
+    "Archived",
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaveXApp(
@@ -140,17 +150,25 @@ fun SaveXApp(
 ) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    val drawerState = androidx.compose.material3.rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val overlayInteractionSource = remember { MutableInteractionSource() }
     val scope = rememberCoroutineScope()
+
     var showCreateCollectionDialog by rememberSaveable { mutableStateOf(false) }
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var homeSearchQuery by rememberSaveable { mutableStateOf("") }
+
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val isHomeDestination = currentDestination?.route == ROUTE_HOME
     val currentTitle = topLevelDestinations.firstOrNull { it.route == currentDestination?.route }?.title
         ?: if (currentDestination?.route == ROUTE_SAVE) "Save item" else "SaveX"
+
+    val homeSearchResults = remember(homeSearchQuery) {
+        homeSearchCatalog
+            .filter { homeSearchQuery.isBlank() || it.contains(homeSearchQuery, ignoreCase = true) }
+            .take(12)
+    }
 
     LaunchedEffect(currentDestination?.route) {
         isFabMenuExpanded = false
@@ -212,12 +230,9 @@ fun SaveXApp(
                         },
                         actions = {
                             IconButton(onClick = { }) {
-                                Icon(Icons.Outlined.Search, contentDescription = "Search")
-                            }
-                            IconButton(onClick = { }) {
                                 Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
                             }
-                        }
+                        },
                     )
                 }
             },
@@ -336,6 +351,51 @@ fun SaveXApp(
                             ) { isFabMenuExpanded = false },
                     )
                 }
+
+                AnimatedVisibility(
+                    visible = isHomeDestination && homeSearchQuery.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = innerPadding.calculateTopPadding()),
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    Surface(color = MaterialTheme.colorScheme.background) {
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (homeSearchResults.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = "No results for \"$homeSearchQuery\"",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                    )
+                                }
+                            } else {
+                                items(homeSearchResults, key = { it }) { result ->
+                                    Surface(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { homeSearchQuery = result },
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = MaterialTheme.colorScheme.surface,
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                        tonalElevation = 0.dp,
+                                    ) {
+                                        Text(
+                                            text = result,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -348,6 +408,7 @@ fun SaveXApp(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeTopBar(
     query: String,
@@ -355,97 +416,73 @@ private fun HomeTopBar(
     onOpenDrawer: () -> Unit,
     onProfileClick: () -> Unit,
 ) {
-    var isSearchFocused by remember { mutableStateOf(false) }
-    val searchContainerColor by animateColorAsState(
-        targetValue = if (isSearchFocused) {
-            MaterialTheme.colorScheme.surface
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
-        },
-        label = "searchContainerColor",
-    )
-    val searchBorderColor by animateColorAsState(
-        targetValue = if (isSearchFocused) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            Color.Transparent
-        },
-        label = "searchBorderColor",
-    )
+    var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onOpenDrawer, modifier = Modifier.size(40.dp)) {
-            Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
-        }
-
-        Surface(
-            modifier = Modifier
-                .weight(1f)
-                .height(46.dp),
-            shape = CircleShape,
-            color = searchContainerColor,
-            border = BorderStroke(1.dp, searchBorderColor),
-        ) {
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.merge(
-                    TextStyle(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center,
-                    ),
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+    CenterAlignedTopAppBar(
+        colors = androidx.compose.material3.TopAppBarDefaults.centerAlignedTopAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+        ),
+        navigationIcon = {
+            IconButton(onClick = onOpenDrawer, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
+            }
+        },
+        title = {
+            SearchBar(
                 modifier = Modifier
-                    .onFocusChanged { isSearchFocused = it.isFocused }
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                decorationBox = { innerTextField ->
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (query.isBlank()) {
+                    .widthIn(max = 420.dp),
+                inputField = {
+                    SearchBarDefaults.InputField(
+                        query = query,
+                        onQueryChange = {
+                            onQueryChange(it)
+                            isSearchExpanded = true
+                        },
+                        onSearch = { isSearchExpanded = false },
+                        expanded = isSearchExpanded,
+                        onExpandedChange = { isSearchExpanded = it },
+                        placeholder = {
                             Text(
                                 text = "Search",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
                             )
-                        }
-                        innerTextField()
-                    }
+                        },
+                    )
                 },
-            )
-        }
-
-        Surface(
-            modifier = Modifier.size(42.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            border = BorderStroke(1.dp, Color(0xFFD1D5DB)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(onClick = onProfileClick),
-                contentAlignment = Alignment.Center,
+                expanded = isSearchExpanded,
+                onExpandedChange = { isSearchExpanded = it },
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+                colors = SearchBarDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.PersonOutline,
-                    contentDescription = "Profile",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
+                homeSearchCatalog
+                    .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+                    .take(8)
+                    .forEach { suggestion ->
+                        Text(
+                            text = suggestion,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onQueryChange(suggestion)
+                                    isSearchExpanded = false
+                                }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
             }
-        }
-    }
+        },
+        actions = {
+            IconButton(onClick = onProfileClick, modifier = Modifier.size(42.dp)) {
+                Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
+            }
+        },
+    )
 }
 
 @Composable
@@ -455,9 +492,9 @@ private fun HomeFabMenu(
     onCreateCollectionClick: () -> Unit,
     onSaveClick: () -> Unit,
 ) {
-    val iconRotation by animateFloatAsState(
-        targetValue = if (expanded) 135f else 0f,
-        label = "fabIconRotation",
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 45f else 0f,
+        label = "fabRotation",
     )
 
     Column(
@@ -466,68 +503,59 @@ private fun HomeFabMenu(
     ) {
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 3 }),
         ) {
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                FabMenuActionButton(
-                    title = "Collection",
+                MiniFabAction(
                     icon = Icons.Outlined.CreateNewFolder,
+                    label = "Create collection",
                     onClick = onCreateCollectionClick,
                 )
-                FabMenuActionButton(
-                    title = "Save",
+                MiniFabAction(
                     icon = Icons.Outlined.Link,
+                    label = "Save item",
                     onClick = onSaveClick,
                 )
             }
         }
 
-        FloatingActionButton(
-            onClick = onToggleExpanded,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = if (expanded) CircleShape else RoundedCornerShape(16.dp),
-        ) {
+        FloatingActionButton(onClick = onToggleExpanded) {
             Icon(
                 imageVector = Icons.Outlined.Add,
-                contentDescription = "Create",
-                modifier = Modifier.rotate(iconRotation),
+                contentDescription = if (expanded) "Close actions" else "Open actions",
+                modifier = Modifier.rotate(rotation),
             )
         }
     }
 }
 
 @Composable
-private fun FabMenuActionButton(
-    title: String,
+private fun MiniFabAction(
     icon: ImageVector,
+    label: String,
     onClick: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier
-            .widthIn(min = 144.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        tonalElevation = 0.dp,
-        shadowElevation = 4.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        tonalElevation = 2.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .widthIn(min = 180.dp)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(text = title, style = MaterialTheme.typography.titleSmall)
+            Icon(icon, contentDescription = null)
+            Text(text = label, style = MaterialTheme.typography.labelLarge)
+            Spacer(modifier = Modifier.width(2.dp))
         }
     }
 }
@@ -537,9 +565,10 @@ private fun LibraryPlaceholderScreen(
     title: String,
     subtitle: String,
     items: List<String>,
+    modifier: Modifier = Modifier,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
