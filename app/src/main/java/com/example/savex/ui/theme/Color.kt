@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 val PocketTeal = Color(0xFF00A19B)
 val PocketTealDark = Color(0xFF008580)
-val PocketTealSoft = Color(0x1A00A19B)
+val PocketTealSoft = Color(0xFFD6EFEE)
 val PocketCoral = Color(0xFFEF4056)
 
 val BgApp = Color(0xFFF9FAFB)

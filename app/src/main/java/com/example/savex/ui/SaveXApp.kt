@@ -1,31 +1,24 @@
 package com.example.savex.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
@@ -33,6 +26,7 @@ import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
@@ -41,7 +35,6 @@ import androidx.compose.material.icons.outlined.InsertChartOutlined
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.PersonOutline
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Sync
@@ -51,7 +44,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,19 +66,20 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -171,6 +167,10 @@ fun SaveXApp(
     }
 
     LaunchedEffect(currentDestination?.route) {
+        isFabMenuExpanded = false
+    }
+
+    BackHandler(enabled = isFabMenuExpanded) {
         isFabMenuExpanded = false
     }
 
@@ -276,7 +276,7 @@ fun SaveXApp(
             floatingActionButton = {
                 HomeFabMenu(
                     expanded = isFabMenuExpanded,
-                    onToggleExpanded = { isFabMenuExpanded = !isFabMenuExpanded },
+                    onExpandedChange = { isFabMenuExpanded = it },
                     onCreateCollectionClick = {
                         isFabMenuExpanded = false
                         showCreateCollectionDialog = true
@@ -344,7 +344,6 @@ fun SaveXApp(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
                             .clickable(
                                 interactionSource = overlayInteractionSource,
                                 indication = null,
@@ -485,78 +484,45 @@ private fun HomeTopBar(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HomeFabMenu(
     expanded: Boolean,
-    onToggleExpanded: () -> Unit,
+    onExpandedChange: (Boolean) -> Unit,
     onCreateCollectionClick: () -> Unit,
     onSaveClick: () -> Unit,
 ) {
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 45f else 0f,
-        label = "fabRotation",
-    )
-
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 3 }),
-        ) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+    FloatingActionButtonMenu(
+        expanded = expanded,
+        button = {
+            ToggleFloatingActionButton(
+                checked = expanded,
+                onCheckedChange = onExpandedChange,
             ) {
-                MiniFabAction(
-                    icon = Icons.Outlined.CreateNewFolder,
-                    label = "Create collection",
-                    onClick = onCreateCollectionClick,
-                )
-                MiniFabAction(
-                    icon = Icons.Outlined.Link,
-                    label = "Save item",
-                    onClick = onSaveClick,
+                val imageVector by remember {
+                    derivedStateOf {
+                        if (checkedProgress > 0.5f) Icons.Outlined.Close else Icons.Outlined.Add
+                    }
+                }
+                Icon(
+                    imageVector = imageVector,
+                    contentDescription = if (expanded) "Close actions" else "Open actions",
+                    modifier = Modifier.animateIcon({ checkedProgress }),
                 )
             }
-        }
-
-        FloatingActionButton(onClick = onToggleExpanded) {
-            Icon(
-                imageVector = Icons.Outlined.Add,
-                contentDescription = if (expanded) "Close actions" else "Open actions",
-                modifier = Modifier.rotate(rotation),
-            )
-        }
-    }
-}
-
-@Composable
-private fun MiniFabAction(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        tonalElevation = 2.dp,
+        },
     ) {
-        Row(
-            modifier = Modifier
-                .widthIn(min = 180.dp)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Icon(icon, contentDescription = null)
-            Text(text = label, style = MaterialTheme.typography.labelLarge)
-            Spacer(modifier = Modifier.width(2.dp))
-        }
+        FloatingActionButtonMenuItem(
+            onClick = onCreateCollectionClick,
+            icon = { Icon(Icons.Outlined.CreateNewFolder, contentDescription = null) },
+            text = { Text("Create collection") },
+        )
+
+        FloatingActionButtonMenuItem(
+            onClick = onSaveClick,
+            icon = { Icon(Icons.Outlined.Link, contentDescription = null) },
+            text = { Text("Save item") },
+        )
     }
 }
 
