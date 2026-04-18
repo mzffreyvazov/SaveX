@@ -66,6 +66,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
@@ -78,6 +79,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -269,22 +271,6 @@ fun SaveXApp(
                     }
                 }
             },
-            floatingActionButton = {
-                HomeFabMenu(
-                    expanded = isFabMenuExpanded,
-                    onExpandedChange = { isFabMenuExpanded = it },
-                    onCreateCollectionClick = {
-                        isFabMenuExpanded = false
-                        showCreateCollectionDialog = true
-                    },
-                    onSaveClick = {
-                        isFabMenuExpanded = false
-                        if (currentDestination?.route != ROUTE_SAVE) {
-                            navController.navigate(ROUTE_SAVE)
-                        }
-                    },
-                )
-            },
         ) { innerPadding ->
             Box(modifier = Modifier.fillMaxSize()) {
                 NavHost(
@@ -391,6 +377,24 @@ fun SaveXApp(
                         }
                     }
                 }
+
+                HomeFabMenu(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = innerPadding.calculateBottomPadding()),
+                    expanded = isFabMenuExpanded,
+                    onExpandedChange = { isFabMenuExpanded = it },
+                    onCreateCollectionClick = {
+                        isFabMenuExpanded = false
+                        showCreateCollectionDialog = true
+                    },
+                    onSaveClick = {
+                        isFabMenuExpanded = false
+                        if (currentDestination?.route != ROUTE_SAVE) {
+                            navController.navigate(ROUTE_SAVE)
+                        }
+                    },
+                )
             }
         }
     }
@@ -483,17 +487,21 @@ private fun HomeTopBar(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HomeFabMenu(
+    modifier: Modifier = Modifier,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onCreateCollectionClick: () -> Unit,
     onSaveClick: () -> Unit,
 ) {
     FloatingActionButtonMenu(
+        modifier = modifier,
         expanded = expanded,
         button = {
             ToggleFloatingActionButton(
                 checked = expanded,
                 onCheckedChange = onExpandedChange,
+                containerSize = ToggleFloatingActionButtonDefaults.containerSizeMedium(),
+                containerCornerRadius = ToggleFloatingActionButtonDefaults.containerCornerRadiusMedium(),
             ) {
                 val imageVector by remember {
                     derivedStateOf {
@@ -503,21 +511,38 @@ private fun HomeFabMenu(
                 Icon(
                     imageVector = imageVector,
                     contentDescription = if (expanded) "Close actions" else "Open actions",
-                    modifier = Modifier.animateIcon({ checkedProgress }),
+                    modifier = Modifier.animateIcon(
+                        checkedProgress = { checkedProgress },
+                        size = ToggleFloatingActionButtonDefaults.iconSizeMedium(),
+                    ),
                 )
             }
         },
     ) {
         FloatingActionButtonMenuItem(
+            modifier = Modifier.padding(bottom = 2.dp),
             onClick = onCreateCollectionClick,
-            icon = { Icon(Icons.Outlined.CreateNewFolder, contentDescription = null) },
-            text = { Text("Create collection") },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.CreateNewFolder,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+            },
+            text = { Text("Create collection", style = MaterialTheme.typography.titleMedium) },
         )
 
         FloatingActionButtonMenuItem(
+            modifier = Modifier.padding(top = 2.dp),
             onClick = onSaveClick,
-            icon = { Icon(Icons.Outlined.Link, contentDescription = null) },
-            text = { Text("Save item") },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Link,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+            },
+            text = { Text("Save item", style = MaterialTheme.typography.titleMedium) },
         )
     }
 }
