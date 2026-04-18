@@ -259,7 +259,12 @@ fun SaveXApp(
                                 selectedIndicatorColor = MaterialTheme.colorScheme.secondaryContainer,
                             ),
                             icon = { Icon(destination.icon, contentDescription = destination.title) },
-                            label = { Text(destination.title) },
+                            label = {
+                                Text(
+                                    text = destination.title,
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal),
+                                )
+                            },
                         )
                     }
                 }
