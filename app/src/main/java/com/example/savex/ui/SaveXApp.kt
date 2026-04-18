@@ -264,7 +264,7 @@ fun SaveXApp(
                             label = {
                                 Text(
                                     text = destination.title,
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                                 )
                             },
                         )
