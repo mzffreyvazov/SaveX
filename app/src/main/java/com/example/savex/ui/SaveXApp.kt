@@ -214,28 +214,14 @@ fun SaveXApp(
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
-                if (isHomeDestination) {
-                    HomeTopBar(
-                        query = homeSearchQuery,
-                        onQueryChange = { homeSearchQuery = it },
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onProfileClick = { },
-                    )
-                } else {
-                    TopAppBar(
-                        title = { Text(currentTitle) },
-                        navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = { }) {
-                                Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
-                            }
-                        },
-                    )
-                }
+                HomeTopBar(
+                    query = homeSearchQuery,
+                    onQueryChange = { homeSearchQuery = it },
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onProfileClick = { },
+                    showSearchBar = isHomeDestination,
+                    title = currentTitle
+                )
             },
             bottomBar = {
                 ShortNavigationBar(
@@ -414,70 +400,59 @@ private fun HomeTopBar(
     onQueryChange: (String) -> Unit,
     onOpenDrawer: () -> Unit,
     onProfileClick: () -> Unit,
+    showSearchBar: Boolean,
+    title: String,
 ) {
     var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
 
     CenterAlignedTopAppBar(
-        colors = androidx.compose.material3.TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-        ),
         navigationIcon = {
-            IconButton(onClick = onOpenDrawer, modifier = Modifier.size(40.dp)) {
+            IconButton(onClick = onOpenDrawer) {
                 Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
             }
         },
         title = {
-            SearchBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 420.dp),
-                inputField = {
-                    SearchBarDefaults.InputField(
-                        query = query,
-                        onQueryChange = {
-                            onQueryChange(it)
-                            isSearchExpanded = true
-                        },
-                        onSearch = { isSearchExpanded = false },
-                        expanded = isSearchExpanded,
-                        onExpandedChange = { isSearchExpanded = it },
-                        placeholder = {
-                            Text(
-                                text = "Search",
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center,
-                            )
-                        },
-                    )
-                },
-                expanded = isSearchExpanded,
-                onExpandedChange = { isSearchExpanded = it },
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                colors = SearchBarDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            ) {
-                homeSearchCatalog
-                    .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
-                    .take(8)
-                    .forEach { suggestion ->
-                        Text(
-                            text = suggestion,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onQueryChange(suggestion)
-                                    isSearchExpanded = false
-                                }
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+            if (showSearchBar) {
+                SearchBar(
+                    inputField = {
+                        SearchBarDefaults.InputField(
+                            query = query,
+                            onQueryChange = {
+                                onQueryChange(it)
+                                isSearchExpanded = true
+                            },
+                            onSearch = { isSearchExpanded = false },
+                            expanded = isSearchExpanded,
+                            onExpandedChange = { isSearchExpanded = it },
+                            placeholder = { Text("Search") },
                         )
-                    }
+                    },
+                    expanded = isSearchExpanded,
+                    onExpandedChange = { isSearchExpanded = it },
+                ) {
+                    homeSearchCatalog
+                        .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+                        .take(8)
+                        .forEach { suggestion ->
+                            Text(
+                                text = suggestion,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onQueryChange(suggestion)
+                                        isSearchExpanded = false
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                            )
+                        }
+                }
+            } else {
+                Text(title)
             }
         },
         actions = {
-            IconButton(onClick = onProfileClick, modifier = Modifier.size(42.dp)) {
+            IconButton(onClick = onProfileClick) {
                 Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
             }
         },
