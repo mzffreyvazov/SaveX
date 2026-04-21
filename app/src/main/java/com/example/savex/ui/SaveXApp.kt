@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.InsertChartOutlined
 import androidx.compose.material.icons.outlined.Link
@@ -54,6 +56,7 @@ import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -413,6 +416,74 @@ private fun HomeTopBar(
     var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
 
     if (showSearchBar) {
+        // Expanded search view — full screen, like Google Drive
+        if (isSearchExpanded) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(10f)
+                    .background(MaterialTheme.colorScheme.surface),
+            ) {
+                SearchBar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth(),
+                    inputField = {
+                        SearchBarDefaults.InputField(
+                            query = query,
+                            onQueryChange = onQueryChange,
+                            onSearch = { isSearchExpanded = false },
+                            expanded = true,
+                            onExpandedChange = { if (!it) isSearchExpanded = false },
+                            placeholder = { Text("Search") },
+                            leadingIcon = {
+                                IconButton(onClick = { isSearchExpanded = false }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Outlined.ArrowBack,
+                                        contentDescription = "Back",
+                                    )
+                                }
+                            },
+                        )
+                    },
+                    expanded = true,
+                    onExpandedChange = { if (!it) isSearchExpanded = false },
+                ) {
+                    if (query.isBlank()) {
+                        Text(
+                            text = "Recent searches",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                    }
+
+                    homeSearchCatalog
+                        .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+                        .take(8)
+                        .forEach { suggestion ->
+                            ListItem(
+                                headlineContent = { Text(suggestion) },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Outlined.History,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                modifier = Modifier
+                                    .clickable {
+                                        onQueryChange(suggestion)
+                                        isSearchExpanded = false
+                                    }
+                                    .fillMaxWidth(),
+                            )
+                        }
+                }
+            }
+        }
+
+        // Collapsed state — custom pill row in the top bar
         Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
@@ -428,8 +499,6 @@ private fun HomeTopBar(
                 IconButton(onClick = onOpenDrawer) {
                     Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
                 }
-
-                // Fake search bar pill — mimics SearchBar visually, zero internal padding
                 Surface(
                     modifier = Modifier.weight(1f).height(56.dp),
                     shape = RoundedCornerShape(50),
@@ -439,7 +508,7 @@ private fun HomeTopBar(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 24.dp), // unfocused leading/trailing padding per spec
+                            .padding(horizontal = 24.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
                         Text(
@@ -452,58 +521,8 @@ private fun HomeTopBar(
                         )
                     }
                 }
-
                 IconButton(onClick = onProfileClick) {
                     Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
-                }
-            }
-        }
-
-        // Full-screen search overlay — shown when expanded
-        if (isSearchExpanded) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(10f),
-            ) {
-                SearchBar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter),
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            query = query,
-                            onQueryChange = onQueryChange,
-                            onSearch = { isSearchExpanded = false },
-                            expanded = true,
-                            onExpandedChange = { if (!it) isSearchExpanded = false },
-                            placeholder = { Text("Search") },
-                            leadingIcon = {
-                                IconButton(onClick = { isSearchExpanded = false }) {
-                                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
-                                }
-                            },
-                        )
-                    },
-                    expanded = true,
-                    onExpandedChange = { if (!it) isSearchExpanded = false },
-                ) {
-                    homeSearchCatalog
-                        .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
-                        .take(8)
-                        .forEach { suggestion ->
-                            Text(
-                                text = suggestion,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onQueryChange(suggestion)
-                                        isSearchExpanded = false
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                            )
-                        }
                 }
             }
         }
