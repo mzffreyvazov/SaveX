@@ -560,8 +560,6 @@ private fun HomeFabMenu(
             ToggleFloatingActionButton(
                 checked = expanded,
                 onCheckedChange = onExpandedChange,
-                containerSize = ToggleFloatingActionButtonDefaults.containerSizeMedium(),
-                containerCornerRadius = ToggleFloatingActionButtonDefaults.containerCornerRadiusMedium(),
             ) {
                 val imageVector by remember {
                     derivedStateOf {
@@ -573,7 +571,6 @@ private fun HomeFabMenu(
                     contentDescription = if (expanded) "Close actions" else "Open actions",
                     modifier = Modifier.animateIcon(
                         checkedProgress = { checkedProgress },
-                        size = ToggleFloatingActionButtonDefaults.iconSizeMedium(),
                     ),
                 )
             }
