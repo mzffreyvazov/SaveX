@@ -1,13 +1,8 @@
 package com.example.savex.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,7 +35,6 @@ import androidx.compose.material.icons.outlined.InsertChartOutlined
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.PersonOutline
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Sync
@@ -51,6 +45,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExpandedFullScreenContainedSearchBar
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -65,6 +60,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.ShortNavigationBarItemDefaults
@@ -76,8 +72,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -92,9 +88,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -158,7 +152,6 @@ fun SaveXApp(
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val overlayInteractionSource = remember { MutableInteractionSource() }
     val scope = rememberCoroutineScope()
 
     var showCreateCollectionDialog by rememberSaveable { mutableStateOf(false) }
@@ -170,12 +163,6 @@ fun SaveXApp(
     val isHomeDestination = currentDestination?.route == ROUTE_HOME
     val currentTitle = topLevelDestinations.firstOrNull { it.route == currentDestination?.route }?.title
         ?: if (currentDestination?.route == ROUTE_SAVE) "Save item" else "SaveX"
-
-    val homeSearchResults = remember(homeSearchQuery) {
-        homeSearchCatalog
-            .filter { homeSearchQuery.isBlank() || it.contains(homeSearchQuery, ignoreCase = true) }
-            .take(12)
-    }
 
     LaunchedEffect(currentDestination?.route) {
         isFabMenuExpanded = false
@@ -322,56 +309,10 @@ fun SaveXApp(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clickable(
-                                interactionSource = overlayInteractionSource,
-                                indication = null,
-                            ) { isFabMenuExpanded = false },
+                            .clickable(indication = null, interactionSource = null) {
+                                isFabMenuExpanded = false
+                            },
                     )
-                }
-
-                AnimatedVisibility(
-                    visible = isHomeDestination && homeSearchQuery.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = innerPadding.calculateTopPadding()),
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    Surface(color = MaterialTheme.colorScheme.background) {
-                        LazyColumn(
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            if (homeSearchResults.isEmpty()) {
-                                item {
-                                    Text(
-                                        text = "No results for \"$homeSearchQuery\"",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(vertical = 8.dp),
-                                    )
-                                }
-                            } else {
-                                items(homeSearchResults, key = { it }) { result ->
-                                    Surface(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { homeSearchQuery = result },
-                                        shape = RoundedCornerShape(14.dp),
-                                        color = MaterialTheme.colorScheme.surface,
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                        tonalElevation = 0.dp,
-                                    ) {
-                                        Text(
-                                            text = result,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
 
                 HomeFabMenu(
@@ -403,7 +344,7 @@ fun SaveXApp(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HomeTopBar(
     query: String,
@@ -413,116 +354,145 @@ private fun HomeTopBar(
     showSearchBar: Boolean,
     title: String,
 ) {
-    var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
-
     if (showSearchBar) {
-        // Expanded search view — full screen, like Google Drive
-        if (isSearchExpanded) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(10f)
-                    .background(MaterialTheme.colorScheme.surface),
-            ) {
-                SearchBar(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth(),
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            query = query,
-                            onQueryChange = onQueryChange,
-                            onSearch = { isSearchExpanded = false },
-                            expanded = true,
-                            onExpandedChange = { if (!it) isSearchExpanded = false },
-                            placeholder = { Text("Search") },
-                            leadingIcon = {
-                                IconButton(onClick = { isSearchExpanded = false }) {
-                                    Icon(
-                                        Icons.AutoMirrored.Outlined.ArrowBack,
-                                        contentDescription = "Back",
-                                    )
-                                }
-                            },
-                        )
-                    },
-                    expanded = true,
-                    onExpandedChange = { if (!it) isSearchExpanded = false },
-                ) {
-                    if (query.isBlank()) {
-                        Text(
-                            text = "Recent searches",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                        )
-                    }
+        val scope = rememberCoroutineScope()
+        val searchBarState = rememberSearchBarState()
+        val isSearchExpanded =
+            searchBarState.currentValue == SearchBarValue.Expanded ||
+                searchBarState.targetValue == SearchBarValue.Expanded
+        val searchSuggestions = remember(query) {
+            homeSearchCatalog
+                .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+                .take(12)
+        }
 
-                    homeSearchCatalog
-                        .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
-                        .take(8)
-                        .forEach { suggestion ->
-                            ListItem(
-                                headlineContent = { Text(suggestion) },
-                                leadingContent = {
-                                    Icon(
-                                        Icons.Outlined.History,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                modifier = Modifier
-                                    .clickable {
-                                        onQueryChange(suggestion)
-                                        isSearchExpanded = false
-                                    }
-                                    .fillMaxWidth(),
-                            )
-                        }
+        fun setSearchExpanded(expanded: Boolean) {
+            scope.launch {
+                if (expanded) {
+                    searchBarState.animateToExpanded()
+                } else {
+                    searchBarState.animateToCollapsed()
                 }
             }
         }
 
-        // Collapsed state — custom pill row in the top bar
+        BackHandler(enabled = isSearchExpanded) {
+            setSearchExpanded(false)
+        }
+
+        val inputField: @Composable () -> Unit = {
+            SearchBarDefaults.InputField(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = { },
+                expanded = isSearchExpanded,
+                onExpandedChange = ::setSearchExpanded,
+                placeholder = { Text("Search") },
+                leadingIcon = {
+                    IconButton(
+                        onClick = {
+                            if (isSearchExpanded) {
+                                setSearchExpanded(false)
+                            } else {
+                                onOpenDrawer()
+                            }
+                        },
+                    ) {
+                        Icon(
+                            imageVector = if (isSearchExpanded) {
+                                Icons.AutoMirrored.Outlined.ArrowBack
+                            } else {
+                                Icons.Outlined.Menu
+                            },
+                            contentDescription = if (isSearchExpanded) {
+                                "Close search"
+                            } else {
+                                "Open navigation drawer"
+                            },
+                        )
+                    }
+                },
+                trailingIcon = {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (isSearchExpanded && query.isNotBlank()) {
+                            IconButton(onClick = { onQueryChange("") }) {
+                                Icon(Icons.Outlined.Close, contentDescription = "Clear search query")
+                            }
+                        }
+                        IconButton(onClick = onProfileClick) {
+                            Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
+                        }
+                    }
+                },
+            )
+        }
+
         Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
         ) {
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(TopAppBarDefaults.windowInsets)
-                    .height(64.dp)
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                IconButton(onClick = onOpenDrawer) {
-                    Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
+                SearchBar(
+                    state = searchBarState,
+                    inputField = inputField,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        ExpandedFullScreenContainedSearchBar(
+            state = searchBarState,
+            inputField = inputField,
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 16.dp),
+            ) {
+                item {
+                    Text(
+                        text = if (query.isBlank()) "Recent searches" else "Matching results",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
                 }
-                Surface(
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    onClick = { isSearchExpanded = true },
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 24.dp),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
+
+                if (searchSuggestions.isEmpty()) {
+                    item {
                         Text(
-                            text = if (query.isBlank()) "Search" else query,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (query.isBlank())
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else
-                                MaterialTheme.colorScheme.onSurface,
+                            text = "No results for \"$query\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
-                }
-                IconButton(onClick = onProfileClick) {
-                    Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
+                } else {
+                    items(searchSuggestions, key = { it }) { suggestion ->
+                        ListItem(
+                            headlineContent = { Text(suggestion) },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Outlined.History,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onQueryChange(suggestion)
+                                    setSearchExpanded(false)
+                                },
+                        )
+                    }
                 }
             }
         }
