@@ -373,6 +373,7 @@ fun HomeScreen(
         ModalBottomSheet(
             onDismissRequest = { currentSheet = null },
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
         ) {
             when (val sheet = currentSheet) {
                 is HomeBottomSheet.ItemActions -> {
