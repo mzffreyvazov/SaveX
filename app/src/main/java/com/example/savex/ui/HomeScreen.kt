@@ -532,7 +532,7 @@ private fun HomeControlRow(
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
                 .clickable(onClick = onSortClick)
-                .padding(vertical = 4.dp),
+                .padding(horizontal = 4.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -546,7 +546,7 @@ private fun HomeControlRow(
                 color = MaterialTheme.colorScheme.surfaceVariant,
             ) {
                 Box(
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(32.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
