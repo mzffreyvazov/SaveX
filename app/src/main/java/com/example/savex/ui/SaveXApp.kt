@@ -398,26 +398,10 @@ fun SaveXApp(
                                 StarredScreen(modifier = Modifier.fillMaxSize())
                             }
                             composable(ROUTE_COLLECTIONS) {
-                                LibraryPlaceholderScreen(
-                                    title = "Collections",
-                                    subtitle = "Folders become the primary organizational layer for saved content.",
-                                    items = listOf(
-                                        "Folder-first browsing",
-                                        "Collection-level reminders",
-                                        "Easy grouping for themes and projects",
-                                    ),
-                                )
+                                CollectionsScreen(modifier = Modifier.fillMaxSize())
                             }
                             composable(ROUTE_ARCHIVED) {
-                                LibraryPlaceholderScreen(
-                                    title = "Archived",
-                                    subtitle = "Archived collections and items stay searchable without cluttering the active library.",
-                                    items = listOf(
-                                        "Archived collections pinned first",
-                                        "Archived items underneath",
-                                        "Safe soft-delete workflow later",
-                                    ),
-                                )
+                                ArchiveScreen(modifier = Modifier.fillMaxSize())
                             }
                             composable(ROUTE_SAVE) {
                                 SaveScreen(
