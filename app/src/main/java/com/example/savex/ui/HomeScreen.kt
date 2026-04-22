@@ -1178,7 +1178,7 @@ private fun HomeActionsSheet(
             title = target.title,
             icon = target.icon,
         )
-        HorizontalDivider()
+        HomeSheetDivider()
 
         homeActionGroups.forEachIndexed { groupIndex, group ->
             group.forEach { action ->
@@ -1213,7 +1213,7 @@ private fun HomeActionsSheet(
             }
 
             if (groupIndex < homeActionGroups.lastIndex) {
-                HorizontalDivider()
+                HomeSheetDivider()
             }
         }
 
@@ -1230,7 +1230,7 @@ private fun SavedSortAndFilterSheet(
 ) {
     Column {
         HomeSheetSectionTitle(text = "Sort by")
-        HorizontalDivider()
+        HomeSheetDivider()
         SavedSortOption.entries.forEach { option ->
             SelectableSheetRow(
                 label = option.label,
@@ -1238,7 +1238,7 @@ private fun SavedSortAndFilterSheet(
                 onClick = { onSortSelected(option) },
             )
         }
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        HomeSheetDivider(modifier = Modifier.padding(vertical = 4.dp))
         HomeSheetSectionTitle(text = "Show")
         SavedFilterOption.entries.forEach { option ->
             SelectableSheetRow(
@@ -1260,7 +1260,7 @@ private fun ReviewSortAndFilterSheet(
 ) {
     Column {
         HomeSheetSectionTitle(text = "Sort by")
-        HorizontalDivider()
+        HomeSheetDivider()
         ReviewSortOption.entries.forEach { option ->
             SelectableSheetRow(
                 label = option.label,
@@ -1268,7 +1268,7 @@ private fun ReviewSortAndFilterSheet(
                 onClick = { onSortSelected(option) },
             )
         }
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        HomeSheetDivider(modifier = Modifier.padding(vertical = 4.dp))
         HomeSheetSectionTitle(text = "Show")
         ReviewFilterOption.entries.forEach { option ->
             SelectableSheetRow(
@@ -1327,6 +1327,16 @@ private fun HomeSheetSectionTitle(
         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+    )
+}
+
+@Composable
+private fun HomeSheetDivider(
+    modifier: Modifier = Modifier,
+) {
+    HorizontalDivider(
+        modifier = modifier.padding(start = 16.dp),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
     )
 }
 
