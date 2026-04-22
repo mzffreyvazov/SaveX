@@ -2,13 +2,21 @@ package com.example.savex.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +25,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -88,18 +97,22 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -116,6 +129,9 @@ private const val ROUTE_COLLECTIONS = "collections"
 private const val ROUTE_ARCHIVED = "archived"
 private const val ROUTE_SAVE = "save"
 private const val PROFILE_AVATAR_URL = "https://api.dicebear.com/9.x/avataaars/png?seed=Felix&size=96"
+private const val HOME_SEARCH_BAR_BOUNDS_KEY = "home_search_bar_bounds"
+private const val HOME_SEARCH_LEADING_KEY = "home_search_leading"
+private const val HOME_SEARCH_TRAILING_KEY = "home_search_trailing"
 private val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 private data class TopLevelDestination(
@@ -160,7 +176,11 @@ private val homeSearchCatalog = listOf(
     "Archived",
 )
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalSharedTransitionApi::class,
+)
 @Composable
 fun SaveXApp(
     sharedText: String?,
@@ -174,12 +194,19 @@ fun SaveXApp(
     var showCreateCollectionDialog by rememberSaveable { mutableStateOf(false) }
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var homeSearchQuery by rememberSaveable { mutableStateOf("") }
+    var isHomeSearchExpanded by rememberSaveable { mutableStateOf(false) }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
 
     LaunchedEffect(currentDestination?.route) {
         isFabMenuExpanded = false
+    }
+
+    LaunchedEffect(isHomeSearchExpanded) {
+        if (isHomeSearchExpanded) {
+            isFabMenuExpanded = false
+        }
     }
 
     BackHandler(enabled = isFabMenuExpanded) {
@@ -221,135 +248,153 @@ fun SaveXApp(
             }
         },
     ) {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            topBar = {
-                HomeTopBar(
-                    query = homeSearchQuery,
-                    onQueryChange = { homeSearchQuery = it },
-                    onOpenDrawer = { scope.launch { drawerState.open() } },
-                    onProfileClick = { },
-                )
-            },
-            bottomBar = {
-                ShortNavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ) {
-                    topLevelDestinations.forEach { destination ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
-                        ShortNavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                isFabMenuExpanded = false
-                                navController.navigate(destination.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            colors = ShortNavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                selectedIndicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                            ),
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) destination.selectedIcon else destination.icon,
-                                    contentDescription = destination.title,
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = destination.title,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    ),
-                                )
-                            },
-                        )
-                    }
-                }
-            },
-        ) { innerPadding ->
+        SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.fillMaxSize()) {
-                NavHost(
-                    navController = navController,
-                    startDestination = ROUTE_HOME,
-                    modifier = Modifier.padding(innerPadding),
-                ) {
-                    composable(ROUTE_HOME) {
-                        HomeScreen(modifier = Modifier.fillMaxSize())
-                    }
-                    composable(ROUTE_STARRED) {
-                        LibraryPlaceholderScreen(
-                            title = "Starred",
-                            subtitle = "High-priority collections and items will live here.",
-                            items = listOf(
-                                "Starred collections pinned first",
-                                "Starred individual items below",
-                                "Fast path for what matters most",
-                            ),
+                Scaffold(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    topBar = {
+                        SharedHomeTopBar(
+                            query = homeSearchQuery,
+                            expanded = isHomeSearchExpanded,
+                            onQueryChange = { homeSearchQuery = it },
+                            onExpandedChange = { isHomeSearchExpanded = it },
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onProfileClick = { },
+                            sharedTransitionScope = this@SharedTransitionLayout,
                         )
-                    }
-                    composable(ROUTE_COLLECTIONS) {
-                        LibraryPlaceholderScreen(
-                            title = "Collections",
-                            subtitle = "Folders become the primary organizational layer for saved content.",
-                            items = listOf(
-                                "Folder-first browsing",
-                                "Collection-level reminders",
-                                "Easy grouping for themes and projects",
-                            ),
-                        )
-                    }
-                    composable(ROUTE_ARCHIVED) {
-                        LibraryPlaceholderScreen(
-                            title = "Archived",
-                            subtitle = "Archived collections and items stay searchable without cluttering the active library.",
-                            items = listOf(
-                                "Archived collections pinned first",
-                                "Archived items underneath",
-                                "Safe soft-delete workflow later",
-                            ),
-                        )
-                    }
-                    composable(ROUTE_SAVE) {
-                        SaveScreen(
-                            initialSharedText = sharedText,
-                            onCreateCollection = { showCreateCollectionDialog = true },
-                        )
-                    }
-                }
-
-                if (isFabMenuExpanded) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable(indication = null, interactionSource = null) {
-                                isFabMenuExpanded = false
-                            },
-                    )
-                }
-
-                HomeFabMenu(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = innerPadding.calculateBottomPadding()),
-                    expanded = isFabMenuExpanded,
-                    onExpandedChange = { isFabMenuExpanded = it },
-                    onCreateCollectionClick = {
-                        isFabMenuExpanded = false
-                        showCreateCollectionDialog = true
                     },
-                    onSaveClick = {
-                        isFabMenuExpanded = false
-                        if (currentDestination?.route != ROUTE_SAVE) {
-                            navController.navigate(ROUTE_SAVE)
+                    bottomBar = {
+                        ShortNavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ) {
+                            topLevelDestinations.forEach { destination ->
+                                val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                                ShortNavigationBarItem(
+                                    selected = selected,
+                                    onClick = {
+                                        isFabMenuExpanded = false
+                                        navController.navigate(destination.route) {
+                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    colors = ShortNavigationBarItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        selectedIndicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    ),
+                                    icon = {
+                                        Icon(
+                                            imageVector = if (selected) destination.selectedIcon else destination.icon,
+                                            contentDescription = destination.title,
+                                        )
+                                    },
+                                    label = {
+                                        Text(
+                                            text = destination.title,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                            ),
+                                        )
+                                    },
+                                )
+                            }
                         }
                     },
+                ) { innerPadding ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        NavHost(
+                            navController = navController,
+                            startDestination = ROUTE_HOME,
+                            modifier = Modifier.padding(innerPadding),
+                        ) {
+                            composable(ROUTE_HOME) {
+                                HomeScreen(modifier = Modifier.fillMaxSize())
+                            }
+                            composable(ROUTE_STARRED) {
+                                LibraryPlaceholderScreen(
+                                    title = "Starred",
+                                    subtitle = "High-priority collections and items will live here.",
+                                    items = listOf(
+                                        "Starred collections pinned first",
+                                        "Starred individual items below",
+                                        "Fast path for what matters most",
+                                    ),
+                                )
+                            }
+                            composable(ROUTE_COLLECTIONS) {
+                                LibraryPlaceholderScreen(
+                                    title = "Collections",
+                                    subtitle = "Folders become the primary organizational layer for saved content.",
+                                    items = listOf(
+                                        "Folder-first browsing",
+                                        "Collection-level reminders",
+                                        "Easy grouping for themes and projects",
+                                    ),
+                                )
+                            }
+                            composable(ROUTE_ARCHIVED) {
+                                LibraryPlaceholderScreen(
+                                    title = "Archived",
+                                    subtitle = "Archived collections and items stay searchable without cluttering the active library.",
+                                    items = listOf(
+                                        "Archived collections pinned first",
+                                        "Archived items underneath",
+                                        "Safe soft-delete workflow later",
+                                    ),
+                                )
+                            }
+                            composable(ROUTE_SAVE) {
+                                SaveScreen(
+                                    initialSharedText = sharedText,
+                                    onCreateCollection = { showCreateCollectionDialog = true },
+                                )
+                            }
+                        }
+
+                        if (isFabMenuExpanded) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable(indication = null, interactionSource = null) {
+                                        isFabMenuExpanded = false
+                                    },
+                            )
+                        }
+
+                        if (!isHomeSearchExpanded) {
+                            HomeFabMenu(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(bottom = innerPadding.calculateBottomPadding()),
+                                expanded = isFabMenuExpanded,
+                                onExpandedChange = { isFabMenuExpanded = it },
+                                onCreateCollectionClick = {
+                                    isFabMenuExpanded = false
+                                    showCreateCollectionDialog = true
+                                },
+                                onSaveClick = {
+                                    isFabMenuExpanded = false
+                                    if (currentDestination?.route != ROUTE_SAVE) {
+                                        navController.navigate(ROUTE_SAVE)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+
+                SharedHomeSearchOverlay(
+                    query = homeSearchQuery,
+                    expanded = isHomeSearchExpanded,
+                    onQueryChange = { homeSearchQuery = it },
+                    onExpandedChange = { isHomeSearchExpanded = it },
+                    onProfileClick = { },
+                    sharedTransitionScope = this@SharedTransitionLayout,
                 )
             }
         }
@@ -570,6 +615,347 @@ private fun HomeTopBar(
 
 // Sealed state for the trailing icon slot — avoids stringly-typed branching
 // and gives AnimatedContent a stable, equatable key to diff against.
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalSharedTransitionApi::class,
+)
+@Composable
+private fun SharedHomeTopBar(
+    query: String,
+    expanded: Boolean,
+    onQueryChange: (String) -> Unit,
+    onExpandedChange: (Boolean) -> Unit,
+    onOpenDrawer: () -> Unit,
+    onProfileClick: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.background,
+        tonalElevation = 0.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(TopAppBarDefaults.windowInsets)
+                .height(SearchBarDefaults.InputFieldHeight + 16.dp),
+        ) {
+            AnimatedVisibility(
+                visible = !expanded,
+                enter = fadeIn(animationSpec = tween(durationMillis = 120)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 90)),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                SharedHomeSearchBar(
+                    query = query,
+                    expanded = false,
+                    onQueryChange = onQueryChange,
+                    onExpandedChange = onExpandedChange,
+                    onLeadingClick = onOpenDrawer,
+                    onProfileClick = onProfileClick,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    barModifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    sharedTransitionScope = sharedTransitionScope,
+                    animatedVisibilityScope = this,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
+@Composable
+private fun SharedHomeSearchOverlay(
+    query: String,
+    expanded: Boolean,
+    onQueryChange: (String) -> Unit,
+    onExpandedChange: (Boolean) -> Unit,
+    onProfileClick: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+) {
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val interactionSource = remember { MutableInteractionSource() }
+
+    val searchSuggestions = remember(query) {
+        homeSearchCatalog
+            .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+            .take(12)
+    }
+
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            withFrameNanos { }
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        } else {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
+    }
+
+    BackHandler(enabled = expanded) {
+        onExpandedChange(false)
+    }
+
+    AnimatedVisibility(
+        visible = expanded,
+        enter = fadeIn(animationSpec = tween(durationMillis = 180)),
+        exit = fadeOut(animationSpec = tween(durationMillis = 120)),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = { onExpandedChange(false) },
+                ),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(TopAppBarDefaults.windowInsets)
+                    .imePadding(),
+            ) {
+                SharedHomeSearchBar(
+                    query = query,
+                    expanded = true,
+                    onQueryChange = onQueryChange,
+                    onExpandedChange = onExpandedChange,
+                    onLeadingClick = { onExpandedChange(false) },
+                    onProfileClick = onProfileClick,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    barModifier = Modifier.fillMaxWidth(),
+                    inputFieldModifier = Modifier.focusRequester(focusRequester),
+                    sharedTransitionScope = sharedTransitionScope,
+                    animatedVisibilityScope = this@AnimatedVisibility,
+                )
+
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 180, delayMillis = 60)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 90)),
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentPadding = PaddingValues(bottom = 16.dp),
+                    ) {
+                        item {
+                            Text(
+                                text = if (query.isBlank()) "Recent searches" else "Matching results",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            )
+                        }
+
+                        if (searchSuggestions.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No results for \"$query\"",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                )
+                            }
+                        } else {
+                            items(searchSuggestions, key = { it }) { suggestion ->
+                                ListItem(
+                                    headlineContent = { Text(suggestion) },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Outlined.History,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onQueryChange(suggestion)
+                                            onExpandedChange(false)
+                                        },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
+@Composable
+private fun SharedHomeSearchBar(
+    query: String,
+    expanded: Boolean,
+    onQueryChange: (String) -> Unit,
+    onExpandedChange: (Boolean) -> Unit,
+    onLeadingClick: () -> Unit,
+    onProfileClick: () -> Unit,
+    containerColor: androidx.compose.ui.graphics.Color,
+    barModifier: Modifier,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope,
+    inputFieldModifier: Modifier = Modifier,
+) {
+    with(sharedTransitionScope) {
+        Surface(
+            color = containerColor,
+            shape = SearchBarDefaults.inputFieldShape,
+            modifier = barModifier.sharedBounds(
+                sharedContentState = rememberSharedContentState(key = HOME_SEARCH_BAR_BOUNDS_KEY),
+                animatedVisibilityScope = animatedVisibilityScope,
+                enter = fadeIn(animationSpec = tween(durationMillis = 120)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 90)),
+                resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
+            ),
+        ) {
+            SearchBarDefaults.InputField(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = { },
+                expanded = expanded,
+                onExpandedChange = onExpandedChange,
+                modifier = inputFieldModifier.fillMaxWidth(),
+                placeholder = { Text("Search") },
+                colors = SearchBarDefaults.inputFieldColors(
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    focusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                leadingIcon = {
+                    SharedSearchLeadingIcon(
+                        expanded = expanded,
+                        onClick = onLeadingClick,
+                        sharedTransitionScope = sharedTransitionScope,
+                        animatedVisibilityScope = animatedVisibilityScope,
+                    )
+                },
+                trailingIcon = {
+                    SharedSearchTrailingIcon(
+                        state = when {
+                            expanded && query.isNotBlank() -> TrailingIconState.CLEAR
+                            !expanded -> TrailingIconState.PROFILE
+                            else -> TrailingIconState.NONE
+                        },
+                        onClear = { onQueryChange("") },
+                        onProfileClick = onProfileClick,
+                        sharedTransitionScope = sharedTransitionScope,
+                        animatedVisibilityScope = animatedVisibilityScope,
+                    )
+                },
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun SharedSearchLeadingIcon(
+    expanded: Boolean,
+    onClick: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope,
+) {
+    with(sharedTransitionScope) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = HOME_SEARCH_LEADING_KEY),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 120)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 90)),
+                    resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            AnimatedContent(
+                targetState = if (expanded) LeadingIconState.BACK else LeadingIconState.MENU,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(durationMillis = 140, easing = EmphasizedEasing)) togetherWith
+                        fadeOut(animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing))
+                },
+                label = "leadingIcon",
+            ) { state ->
+                IconButton(onClick = onClick) {
+                    Icon(
+                        imageVector = if (state == LeadingIconState.BACK) {
+                            Icons.AutoMirrored.Outlined.ArrowBack
+                        } else {
+                            Icons.Outlined.Menu
+                        },
+                        contentDescription = if (state == LeadingIconState.BACK) {
+                            "Close search"
+                        } else {
+                            "Open navigation drawer"
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun SharedSearchTrailingIcon(
+    state: TrailingIconState,
+    onClear: () -> Unit,
+    onProfileClick: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope,
+) {
+    with(sharedTransitionScope) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = HOME_SEARCH_TRAILING_KEY),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 120)),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 90)),
+                    resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(durationMillis = 140, easing = EmphasizedEasing)) togetherWith
+                        fadeOut(animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing))
+                },
+                label = "trailingIcon",
+            ) { targetState ->
+                when (targetState) {
+                    TrailingIconState.CLEAR -> IconButton(onClick = onClear) {
+                        Icon(Icons.Outlined.Close, contentDescription = "Clear search query")
+                    }
+                    TrailingIconState.PROFILE -> ProfileAvatarButton(onClick = onProfileClick)
+                    TrailingIconState.NONE -> Box(modifier = Modifier.size(48.dp))
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ProfileAvatarButton(
     onClick: () -> Unit,
@@ -594,6 +980,7 @@ private fun ProfileAvatarButton(
     }
 }
 
+private enum class LeadingIconState { MENU, BACK }
 private enum class TrailingIconState { CLEAR, PROFILE, NONE }
 
 
