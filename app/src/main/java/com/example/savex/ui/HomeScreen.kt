@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.savex.ui.theme.PocketCoral
 
@@ -229,11 +230,7 @@ fun HomeScreen(
         }
 
         item {
-            Text(
-                text = "Recently Saved",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            HomeSectionTitle(text = "Recently Saved")
         }
 
         items(recentlySavedItems, key = { it.title }) { item ->
@@ -261,11 +258,7 @@ private fun SectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        HomeSectionTitle(text = title)
         TextButton(onClick = onActionClick) {
             Text(
                 text = actionLabel,
@@ -274,6 +267,19 @@ private fun SectionHeader(
             )
         }
     }
+}
+
+@Composable
+private fun HomeSectionTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium.copy(letterSpacing = (-0.1).sp),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
 }
 
 @Composable
