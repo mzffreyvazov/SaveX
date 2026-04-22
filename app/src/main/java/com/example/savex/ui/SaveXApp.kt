@@ -450,7 +450,7 @@ private fun HomeTopBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(TopAppBarDefaults.windowInsets)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 SearchBar(
                     state = searchBarState,
