@@ -115,7 +115,7 @@ private const val ROUTE_STARRED = "starred"
 private const val ROUTE_COLLECTIONS = "collections"
 private const val ROUTE_ARCHIVED = "archived"
 private const val ROUTE_SAVE = "save"
-private const val PROFILE_AVATAR_URL = "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+private const val PROFILE_AVATAR_URL = "https://api.dicebear.com/9.x/avataaars/png?seed=Felix&size=96"
 private val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 private data class TopLevelDestination(
