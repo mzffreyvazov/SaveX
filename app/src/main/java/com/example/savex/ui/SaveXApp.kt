@@ -435,6 +435,18 @@ private fun HomeTopBar(
             expanded = isSearchExpanded,
             onExpandedChange = ::setSearchExpanded,
             placeholder = { Text("Search") },
+            colors = SearchBarDefaults.inputFieldColors(
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
             leadingIcon = {
                 IconButton(
                     onClick = {
@@ -510,6 +522,10 @@ private fun HomeTopBar(
                 SearchBar(
                     state = searchBarState,
                     inputField = inputField,
+                    colors = SearchBarDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        dividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0f),
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -518,6 +534,10 @@ private fun HomeTopBar(
         ExpandedFullScreenContainedSearchBar(
             state = searchBarState,
             inputField = inputField,
+            colors = SearchBarDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                dividerColor = MaterialTheme.colorScheme.outline,
+            ),
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
