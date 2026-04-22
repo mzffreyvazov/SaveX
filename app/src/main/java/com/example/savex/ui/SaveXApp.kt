@@ -395,15 +395,7 @@ fun SaveXApp(
                                 HomeScreen(modifier = Modifier.fillMaxSize())
                             }
                             composable(ROUTE_STARRED) {
-                                LibraryPlaceholderScreen(
-                                    title = "Starred",
-                                    subtitle = "High-priority collections and items will live here.",
-                                    items = listOf(
-                                        "Starred collections pinned first",
-                                        "Starred individual items below",
-                                        "Fast path for what matters most",
-                                    ),
-                                )
+                                StarredScreen(modifier = Modifier.fillMaxSize())
                             }
                             composable(ROUTE_COLLECTIONS) {
                                 LibraryPlaceholderScreen(
