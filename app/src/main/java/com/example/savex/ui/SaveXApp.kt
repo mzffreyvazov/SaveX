@@ -177,9 +177,6 @@ fun SaveXApp(
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
-    val isHomeDestination = currentDestination?.route == ROUTE_HOME
-    val currentTitle = topLevelDestinations.firstOrNull { it.route == currentDestination?.route }?.title
-        ?: if (currentDestination?.route == ROUTE_SAVE) "Save item" else "SaveX"
 
     LaunchedEffect(currentDestination?.route) {
         isFabMenuExpanded = false
@@ -233,8 +230,6 @@ fun SaveXApp(
                     onQueryChange = { homeSearchQuery = it },
                     onOpenDrawer = { scope.launch { drawerState.open() } },
                     onProfileClick = { },
-                    showSearchBar = isHomeDestination,
-                    title = currentTitle
                 )
             },
             bottomBar = {
@@ -375,14 +370,7 @@ private fun HomeTopBar(
     onQueryChange: (String) -> Unit,
     onOpenDrawer: () -> Unit,
     onProfileClick: () -> Unit,
-    showSearchBar: Boolean,
-    title: String,
 ) {
-    // FIX: The searchBarState is always created, regardless of showSearchBar.
-    // Previously the entire composable was conditionally swapped (SearchBar vs
-    // CenterAlignedTopAppBar), which caused the leading icon to hard-jump between
-    // two separate layout trees with no shared position. By keeping a single
-    // searchBarState alive we let the M3 SearchBar animate within one stable slot.
     val scope = rememberCoroutineScope()
     val searchBarState = rememberSearchBarState(
         initialValue = SearchBarValue.Collapsed,
@@ -504,101 +492,79 @@ private fun HomeTopBar(
         )
     }
 
-    // FIX: The top bar is now a single always-present Surface that contains the
-    // SearchBar when on the home screen, or a plain title row otherwise.
-    // We no longer swap between two completely different composables
-    // (SearchBar vs CenterAlignedTopAppBar), so the layout tree is stable across
-    // the nav transition and there is no positional jump.
-    if (showSearchBar) {
-        Surface(
-            color = MaterialTheme.colorScheme.background,
-            tonalElevation = 0.dp,
+    Surface(
+        color = MaterialTheme.colorScheme.background,
+        tonalElevation = 0.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(TopAppBarDefaults.windowInsets)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(TopAppBarDefaults.windowInsets)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                SearchBar(
-                    state = searchBarState,
-                    inputField = inputField,
-                    colors = SearchBarDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        dividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0f),
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
+            SearchBar(
+                state = searchBarState,
+                inputField = inputField,
+                colors = SearchBarDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    dividerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0f),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+
+    ExpandedFullScreenContainedSearchBar(
+        state = searchBarState,
+        inputField = inputField,
+        colors = SearchBarDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            dividerColor = MaterialTheme.colorScheme.outline,
+        ),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 16.dp),
+        ) {
+            item {
+                Text(
+                    text = if (query.isBlank()) "Recent searches" else "Matching results",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
-        }
 
-        ExpandedFullScreenContainedSearchBar(
-            state = searchBarState,
-            inputField = inputField,
-            colors = SearchBarDefaults.colors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                dividerColor = MaterialTheme.colorScheme.outline,
-            ),
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = 16.dp),
-            ) {
+            if (searchSuggestions.isEmpty()) {
                 item {
                     Text(
-                        text = if (query.isBlank()) "Recent searches" else "Matching results",
-                        style = MaterialTheme.typography.labelLarge,
+                        text = "No results for \"$query\"",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
-
-                if (searchSuggestions.isEmpty()) {
-                    item {
-                        Text(
-                            text = "No results for \"$query\"",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
-                    }
-                } else {
-                    items(searchSuggestions, key = { it }) { suggestion ->
-                        ListItem(
-                            headlineContent = { Text(suggestion) },
-                            leadingContent = {
-                                Icon(
-                                    Icons.Outlined.History,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+            } else {
+                items(searchSuggestions, key = { it }) { suggestion ->
+                    ListItem(
+                        headlineContent = { Text(suggestion) },
+                        leadingContent = {
+                            Icon(
+                                Icons.Outlined.History,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onQueryChange(suggestion)
+                                setSearchExpanded(false)
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onQueryChange(suggestion)
-                                    setSearchExpanded(false)
-                                },
-                        )
-                    }
+                    )
                 }
             }
         }
-    } else {
-        CenterAlignedTopAppBar(
-            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background,
-            ),
-            navigationIcon = {
-                IconButton(onClick = onOpenDrawer) {
-                    Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
-                }
-            },
-            title = { Text(title) },
-            actions = {
-                ProfileAvatarButton(onClick = onProfileClick)
-            },
-        )
     }
 }
 
