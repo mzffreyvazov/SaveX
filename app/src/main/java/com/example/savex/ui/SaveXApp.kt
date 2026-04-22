@@ -81,6 +81,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
@@ -607,22 +608,22 @@ private fun HomeTopBar(
 private fun ProfileAvatarButton(
     onClick: () -> Unit,
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(42.dp),
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                shape = CircleShape,
+            )
+            .clickable(onClick = onClick),
     ) {
         AsyncImage(
             model = PROFILE_AVATAR_URL,
             contentDescription = "Profile",
             contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    shape = CircleShape,
-                ),
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
@@ -646,17 +647,20 @@ private fun HomeFabMenu(
             ToggleFloatingActionButton(
                 checked = expanded,
                 onCheckedChange = onExpandedChange,
+                containerColor = ToggleFloatingActionButtonDefaults.containerColor(
+                    initialColor = MaterialTheme.colorScheme.primary,
+                    finalColor = MaterialTheme.colorScheme.primary,
+                ),
             ) {
-                val imageVector by remember {
-                    derivedStateOf {
-                        if (checkedProgress > 0.5f) Icons.Outlined.Close else Icons.Outlined.Add
-                    }
-                }
                 Icon(
-                    imageVector = imageVector,
+                    imageVector = if (checkedProgress > 0.5f) Icons.Outlined.Close else Icons.Outlined.Add,
                     contentDescription = if (expanded) "Close actions" else "Open actions",
                     modifier = Modifier.animateIcon(
                         checkedProgress = { checkedProgress },
+                        color = ToggleFloatingActionButtonDefaults.iconColor(
+                            initialColor = MaterialTheme.colorScheme.onPrimary,
+                            finalColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
                     ),
                 )
             }

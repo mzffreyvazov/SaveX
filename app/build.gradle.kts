@@ -66,6 +66,7 @@ dependencies {
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.5.0-alpha17")
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.coil.compose)
+    implementation("io.coil-kt:coil-svg:2.7.0")
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
