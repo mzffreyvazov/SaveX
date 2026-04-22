@@ -1,6 +1,9 @@
 package com.example.savex.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -101,6 +105,7 @@ private const val ROUTE_STARRED = "starred"
 private const val ROUTE_COLLECTIONS = "collections"
 private const val ROUTE_ARCHIVED = "archived"
 private const val ROUTE_SAVE = "save"
+private val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 private data class TopLevelDestination(
     val route: String,
@@ -356,10 +361,16 @@ private fun HomeTopBar(
 ) {
     if (showSearchBar) {
         val scope = rememberCoroutineScope()
-        val searchBarState = rememberSearchBarState()
+        val searchBarState = rememberSearchBarState(
+            initialValue = SearchBarValue.Collapsed,
+            animationSpecForExpand = tween(durationMillis = 300, easing = EmphasizedEasing),
+            animationSpecForCollapse = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        )
         val isSearchExpanded =
             searchBarState.currentValue == SearchBarValue.Expanded ||
                 searchBarState.targetValue == SearchBarValue.Expanded
+        val isSearchTransitionActive =
+            searchBarState.targetValue == SearchBarValue.Expanded || searchBarState.progress > 0.01f
         val searchSuggestions = remember(query) {
             homeSearchCatalog
                 .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
@@ -376,7 +387,7 @@ private fun HomeTopBar(
             }
         }
 
-        BackHandler(enabled = isSearchExpanded) {
+        BackHandler(enabled = isSearchTransitionActive) {
             setSearchExpanded(false)
         }
 
@@ -391,7 +402,7 @@ private fun HomeTopBar(
                 leadingIcon = {
                     IconButton(
                         onClick = {
-                            if (isSearchExpanded) {
+                            if (isSearchTransitionActive) {
                                 setSearchExpanded(false)
                             } else {
                                 onOpenDrawer()
@@ -399,12 +410,12 @@ private fun HomeTopBar(
                         },
                     ) {
                         Icon(
-                            imageVector = if (isSearchExpanded) {
+                            imageVector = if (isSearchTransitionActive) {
                                 Icons.AutoMirrored.Outlined.ArrowBack
                             } else {
                                 Icons.Outlined.Menu
                             },
-                            contentDescription = if (isSearchExpanded) {
+                            contentDescription = if (isSearchTransitionActive) {
                                 "Close search"
                             } else {
                                 "Open navigation drawer"
@@ -413,17 +424,18 @@ private fun HomeTopBar(
                     }
                 },
                 trailingIcon = {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Box(
+                        modifier = Modifier.width(48.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        if (isSearchExpanded && query.isNotBlank()) {
+                        if (isSearchTransitionActive && query.isNotBlank()) {
                             IconButton(onClick = { onQueryChange("") }) {
                                 Icon(Icons.Outlined.Close, contentDescription = "Clear search query")
                             }
-                        }
-                        IconButton(onClick = onProfileClick) {
+                        } else if (!isSearchTransitionActive) {
+                            IconButton(onClick = onProfileClick) {
                             Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
+                            }
                         }
                     }
                 },
@@ -438,7 +450,7 @@ private fun HomeTopBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(TopAppBarDefaults.windowInsets)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp),
             ) {
                 SearchBar(
                     state = searchBarState,
