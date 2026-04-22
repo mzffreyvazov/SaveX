@@ -5,7 +5,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,24 +24,28 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.InsertChartOutlined
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Sync
@@ -90,7 +96,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -98,6 +106,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
 private const val ROUTE_HOME = "home"
@@ -105,12 +114,14 @@ private const val ROUTE_STARRED = "starred"
 private const val ROUTE_COLLECTIONS = "collections"
 private const val ROUTE_ARCHIVED = "archived"
 private const val ROUTE_SAVE = "save"
+private const val PROFILE_AVATAR_URL = "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
 private val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 private data class TopLevelDestination(
     val route: String,
     val title: String,
     val icon: ImageVector,
+    val selectedIcon: ImageVector,
 )
 
 private data class DrawerDestination(
@@ -119,10 +130,10 @@ private data class DrawerDestination(
 )
 
 private val topLevelDestinations = listOf(
-    TopLevelDestination(ROUTE_HOME, "Home", Icons.Outlined.Home),
-    TopLevelDestination(ROUTE_STARRED, "Starred", Icons.Outlined.StarOutline),
-    TopLevelDestination(ROUTE_COLLECTIONS, "Collections", Icons.Outlined.CollectionsBookmark),
-    TopLevelDestination(ROUTE_ARCHIVED, "Archived", Icons.Outlined.Archive),
+    TopLevelDestination(ROUTE_HOME, "Home", Icons.Outlined.Home, Icons.Filled.Home),
+    TopLevelDestination(ROUTE_STARRED, "Starred", Icons.Outlined.StarOutline, Icons.Filled.Star),
+    TopLevelDestination(ROUTE_COLLECTIONS, "Collections", Icons.Outlined.Folder, Icons.Filled.Folder),
+    TopLevelDestination(ROUTE_ARCHIVED, "Archived", Icons.Outlined.Archive, Icons.Filled.Archive),
 )
 
 private val drawerDestinations = listOf(
@@ -227,7 +238,7 @@ fun SaveXApp(
             },
             bottomBar = {
                 ShortNavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    containerColor = MaterialTheme.colorScheme.surface,
                 ) {
                     topLevelDestinations.forEach { destination ->
                         val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
@@ -242,17 +253,24 @@ fun SaveXApp(
                                 }
                             },
                             colors = ShortNavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                selectedIndicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedIndicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                             ),
-                            icon = { Icon(destination.icon, contentDescription = destination.title) },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selected) destination.selectedIcon else destination.icon,
+                                    contentDescription = destination.title,
+                                )
+                            },
                             label = {
                                 Text(
                                     text = destination.title,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    ),
                                 )
                             },
                         )
@@ -464,9 +482,7 @@ private fun HomeTopBar(
                             TrailingIconState.CLEAR -> IconButton(onClick = { onQueryChange("") }) {
                                 Icon(Icons.Outlined.Close, contentDescription = "Clear search query")
                             }
-                            TrailingIconState.PROFILE -> IconButton(onClick = onProfileClick) {
-                                Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
-                            }
+                            TrailingIconState.PROFILE -> ProfileAvatarButton(onClick = onProfileClick)
                             TrailingIconState.NONE -> Box(modifier = Modifier.size(48.dp))
                         }
                     }
@@ -482,7 +498,7 @@ private fun HomeTopBar(
     // the nav transition and there is no positional jump.
     if (showSearchBar) {
         Surface(
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.background,
             tonalElevation = 0.dp,
         ) {
             Box(
@@ -549,6 +565,9 @@ private fun HomeTopBar(
         }
     } else {
         CenterAlignedTopAppBar(
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+            ),
             navigationIcon = {
                 IconButton(onClick = onOpenDrawer) {
                     Icon(Icons.Outlined.Menu, contentDescription = "Open navigation drawer")
@@ -556,9 +575,7 @@ private fun HomeTopBar(
             },
             title = { Text(title) },
             actions = {
-                IconButton(onClick = onProfileClick) {
-                    Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
-                }
+                ProfileAvatarButton(onClick = onProfileClick)
             },
         )
     }
@@ -566,6 +583,30 @@ private fun HomeTopBar(
 
 // Sealed state for the trailing icon slot — avoids stringly-typed branching
 // and gives AnimatedContent a stable, equatable key to diff against.
+@Composable
+private fun ProfileAvatarButton(
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(42.dp),
+    ) {
+        AsyncImage(
+            model = PROFILE_AVATAR_URL,
+            contentDescription = "Profile",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    shape = CircleShape,
+                ),
+        )
+    }
+}
+
 private enum class TrailingIconState { CLEAR, PROFILE, NONE }
 
 
