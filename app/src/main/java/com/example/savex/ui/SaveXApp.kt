@@ -118,10 +118,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import android.view.animation.OvershootInterpolator
-import androidx.compose.animation.core.Easing
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -141,11 +141,11 @@ private const val PROFILE_AVATAR_URL = "https://api.dicebear.com/9.x/avataaars/p
 private const val HOME_SEARCH_BAR_BOUNDS_KEY = "home_search_bar_bounds"
 private const val HOME_SEARCH_LEADING_KEY = "home_search_leading"
 private const val HOME_SEARCH_TRAILING_KEY = "home_search_trailing"
-private const val TAB_SWITCH_DURATION_MS = 280
+private const val TAB_SWITCH_ENTER_DURATION_MS = 180
+private const val TAB_SWITCH_EXIT_DURATION_MS = 90
+private const val TAB_SWITCH_ENTER_DELAY_MS = 35
+private const val TAB_SWITCH_INITIAL_SCALE = 0.98f
 private val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-private val TabPopEasing = Easing { fraction ->
-    OvershootInterpolator(1.5f).getInterpolation(fraction)
-}
 
 private data class TopLevelDestination(
     val route: String,
@@ -200,27 +200,29 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTopLevelTabSwitc
 private fun tabSwitchEnterTransition(): EnterTransition =
     fadeIn(
         animationSpec = tween(
-            durationMillis = TAB_SWITCH_DURATION_MS,
-            easing = FastOutSlowInEasing,
+            durationMillis = TAB_SWITCH_ENTER_DURATION_MS,
+            delayMillis = TAB_SWITCH_ENTER_DELAY_MS,
+            easing = EmphasizedEasing,
         ),
     ) + scaleIn(
-        initialScale = 0.95f,
+        initialScale = TAB_SWITCH_INITIAL_SCALE,
         animationSpec = tween(
-            durationMillis = TAB_SWITCH_DURATION_MS,
-            easing = TabPopEasing,
+            durationMillis = TAB_SWITCH_ENTER_DURATION_MS,
+            delayMillis = TAB_SWITCH_ENTER_DELAY_MS,
+            easing = EmphasizedEasing,
         ),
     )
 
 private fun tabSwitchExitTransition(): ExitTransition =
     fadeOut(
         animationSpec = tween(
-            durationMillis = TAB_SWITCH_DURATION_MS,
+            durationMillis = TAB_SWITCH_EXIT_DURATION_MS,
             easing = FastOutSlowInEasing,
         ),
     ) + scaleOut(
-        targetScale = 0.95f,
+        targetScale = TAB_SWITCH_INITIAL_SCALE,
         animationSpec = tween(
-            durationMillis = TAB_SWITCH_DURATION_MS,
+            durationMillis = TAB_SWITCH_EXIT_DURATION_MS,
             easing = FastOutSlowInEasing,
         ),
     )
@@ -1129,11 +1131,12 @@ private fun LibraryPlaceholderScreen(
     title: String,
     subtitle: String,
     items: List<String>,
+    placeholderDescription: String = "Scaffolded as part of the initial project setup so we can replace placeholders feature by feature.",
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
@@ -1141,7 +1144,7 @@ private fun LibraryPlaceholderScreen(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.semantics { heading() } // Accessibility
                 )
                 Text(
                     text = subtitle,
@@ -1154,17 +1157,23 @@ private fun LibraryPlaceholderScreen(
         items(items) { item ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                shape = MaterialTheme.shapes.extraLarge, // or RoundedCornerShape(20.dp) if brand-specific
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                // border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline) // Remove unless required
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(text = item, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "Scaffolded as part of the initial project setup so we can replace placeholders feature by feature.",
+                        text = item,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium // M3 default for titleMedium
+                    )
+                    Text(
+                        text = placeholderDescription,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
