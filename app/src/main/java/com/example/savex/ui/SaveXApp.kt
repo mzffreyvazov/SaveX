@@ -1,8 +1,11 @@
 package com.example.savex.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -74,11 +77,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleFloatingActionButton
-import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -359,89 +361,137 @@ private fun HomeTopBar(
     showSearchBar: Boolean,
     title: String,
 ) {
-    if (showSearchBar) {
-        val scope = rememberCoroutineScope()
-        val searchBarState = rememberSearchBarState(
-            initialValue = SearchBarValue.Collapsed,
-            animationSpecForExpand = tween(durationMillis = 300, easing = EmphasizedEasing),
-            animationSpecForCollapse = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        )
-        val isSearchExpanded =
-            searchBarState.currentValue == SearchBarValue.Expanded ||
+    // FIX: The searchBarState is always created, regardless of showSearchBar.
+    // Previously the entire composable was conditionally swapped (SearchBar vs
+    // CenterAlignedTopAppBar), which caused the leading icon to hard-jump between
+    // two separate layout trees with no shared position. By keeping a single
+    // searchBarState alive we let the M3 SearchBar animate within one stable slot.
+    val scope = rememberCoroutineScope()
+    val searchBarState = rememberSearchBarState(
+        initialValue = SearchBarValue.Collapsed,
+        // Slightly longer expand so the container visually "catches up" with the
+        // icon crossfade — 350ms gives EmphasizedEasing enough range to feel fluid
+        // without being sluggish.
+        animationSpecForExpand = tween(durationMillis = 350, easing = EmphasizedEasing),
+        // Collapse is intentionally faster (200ms) so dismissing the search feels
+        // snappy and responsive rather than lingering.
+        animationSpecForCollapse = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+    )
+
+    val isSearchExpanded =
+        searchBarState.currentValue == SearchBarValue.Expanded ||
                 searchBarState.targetValue == SearchBarValue.Expanded
-        val isSearchTransitionActive =
-            searchBarState.targetValue == SearchBarValue.Expanded || searchBarState.progress > 0.01f
-        val searchSuggestions = remember(query) {
-            homeSearchCatalog
-                .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
-                .take(12)
-        }
 
-        fun setSearchExpanded(expanded: Boolean) {
-            scope.launch {
-                if (expanded) {
-                    searchBarState.animateToExpanded()
-                } else {
-                    searchBarState.animateToCollapsed()
-                }
-            }
-        }
+    // Crossover at 35% (not 50%) so the icon starts fading while the container is
+    // still visibly growing — the two motions overlap and feel like a single gesture.
+    // At 50% the container is already most of the way open, making the icon feel late.
+    val iconCrossoverReached by remember {
+        derivedStateOf { searchBarState.progress > 0.35f }
+    }
 
-        BackHandler(enabled = isSearchTransitionActive) {
-            setSearchExpanded(false)
-        }
+    // 0.03f: low enough to catch the very start of a collapse (so BackHandler stays
+    // active) but high enough to ignore spurious sub-pixel drift at rest.
+    val isSearchTransitionActive =
+        searchBarState.targetValue == SearchBarValue.Expanded || searchBarState.progress > 0.03f
 
-        val inputField: @Composable () -> Unit = {
-            SearchBarDefaults.InputField(
-                query = query,
-                onQueryChange = onQueryChange,
-                onSearch = { },
-                expanded = isSearchExpanded,
-                onExpandedChange = ::setSearchExpanded,
-                placeholder = { Text("Search") },
-                leadingIcon = {
-                    IconButton(
-                        onClick = {
-                            if (isSearchTransitionActive) {
-                                setSearchExpanded(false)
-                            } else {
-                                onOpenDrawer()
-                            }
-                        },
-                    ) {
+    val searchSuggestions = remember(query) {
+        homeSearchCatalog
+            .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+            .take(12)
+    }
+
+    fun setSearchExpanded(expanded: Boolean) {
+        scope.launch {
+            if (expanded) searchBarState.animateToExpanded()
+            else searchBarState.animateToCollapsed()
+        }
+    }
+
+    BackHandler(enabled = isSearchTransitionActive) {
+        setSearchExpanded(false)
+    }
+
+    // FIX: One shared inputField lambda used by both SearchBar and
+    // ExpandedFullScreenContainedSearchBar. Because they share the same composable
+    // identity the leading icon is composed in a single, stable layout node — the
+    // M3 library cross-fades its position for you instead of teleporting it.
+    val inputField: @Composable () -> Unit = {
+        SearchBarDefaults.InputField(
+            query = query,
+            onQueryChange = onQueryChange,
+            onSearch = { },
+            expanded = isSearchExpanded,
+            onExpandedChange = ::setSearchExpanded,
+            placeholder = { Text("Search") },
+            leadingIcon = {
+                IconButton(
+                    onClick = {
+                        if (isSearchTransitionActive) setSearchExpanded(false)
+                        else onOpenDrawer()
+                    },
+                ) {
+                    // Crossfade kicks in at 35% progress and runs for 120ms.
+                    // With a 350ms expand, 35% ≈ t=122ms, so the fade spans
+                    // roughly t=122ms→242ms — the middle third of the expansion.
+                    // This makes the icon swap feel baked into the opening motion
+                    // rather than happening before it (too early) or after (too late).
+                    // LinearEasing keeps the opacity ramp perfectly neutral so neither
+                    // icon "pops" while the other is still visible.
+                    Crossfade(
+                        targetState = iconCrossoverReached,
+                        animationSpec = tween(durationMillis = 120, easing = LinearEasing),
+                    ) { showBack ->
                         Icon(
-                            imageVector = if (isSearchTransitionActive) {
+                            imageVector = if (showBack) {
                                 Icons.AutoMirrored.Outlined.ArrowBack
                             } else {
                                 Icons.Outlined.Menu
                             },
-                            contentDescription = if (isSearchTransitionActive) {
+                            contentDescription = if (showBack) {
                                 "Close search"
                             } else {
                                 "Open navigation drawer"
                             },
                         )
                     }
-                },
-                trailingIcon = {
-                    Box(
-                        modifier = Modifier.width(48.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (isSearchTransitionActive && query.isNotBlank()) {
-                            IconButton(onClick = { onQueryChange("") }) {
+                }
+            },
+            trailingIcon = {
+                Box(
+                    modifier = Modifier.width(48.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // FIX: AnimatedContent replaces the raw if/else so the trailing
+                    // icon fades between states rather than hard-swapping.
+                    AnimatedContent(
+                        targetState = when {
+                            isSearchTransitionActive && query.isNotBlank() -> TrailingIconState.CLEAR
+                            !isSearchTransitionActive -> TrailingIconState.PROFILE
+                            else -> TrailingIconState.NONE
+                        },
+                        label = "trailingIcon",
+                    ) { state ->
+                        when (state) {
+                            TrailingIconState.CLEAR -> IconButton(onClick = { onQueryChange("") }) {
                                 Icon(Icons.Outlined.Close, contentDescription = "Clear search query")
                             }
-                        } else if (!isSearchTransitionActive) {
-                            IconButton(onClick = onProfileClick) {
-                            Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
+                            TrailingIconState.PROFILE -> IconButton(onClick = onProfileClick) {
+                                Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile")
                             }
+                            TrailingIconState.NONE -> Box(modifier = Modifier.size(48.dp))
                         }
                     }
-                },
-            )
-        }
+                }
+            },
+        )
+    }
 
+    // FIX: The top bar is now a single always-present Surface that contains the
+    // SearchBar when on the home screen, or a plain title row otherwise.
+    // We no longer swap between two completely different composables
+    // (SearchBar vs CenterAlignedTopAppBar), so the layout tree is stable across
+    // the nav transition and there is no positional jump.
+    if (showSearchBar) {
         Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
@@ -524,6 +574,10 @@ private fun HomeTopBar(
         )
     }
 }
+
+// Sealed state for the trailing icon slot — avoids stringly-typed branching
+// and gives AnimatedContent a stable, equatable key to diff against.
+private enum class TrailingIconState { CLEAR, PROFILE, NONE }
 
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
