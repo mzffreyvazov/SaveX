@@ -2,10 +2,8 @@ package com.example.savex.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -385,10 +383,6 @@ private fun HomeTopBar(
     // Crossover at 35% (not 50%) so the icon starts fading while the container is
     // still visibly growing — the two motions overlap and feel like a single gesture.
     // At 50% the container is already most of the way open, making the icon feel late.
-    val iconCrossoverReached by remember {
-        derivedStateOf { searchBarState.progress > 0.35f }
-    }
-
     // 0.03f: low enough to catch the very start of a collapse (so BackHandler stays
     // active) but high enough to ignore spurious sub-pixel drift at rest.
     val isSearchTransitionActive =
@@ -411,10 +405,10 @@ private fun HomeTopBar(
         setSearchExpanded(false)
     }
 
-    // FIX: One shared inputField lambda used by both SearchBar and
-    // ExpandedFullScreenContainedSearchBar. Because they share the same composable
+    // One shared inputField lambda used by both SearchBar and
+    // ExpandedFullScreenContainedSearchBar keeps the field layout stable while the
     // identity the leading icon is composed in a single, stable layout node — the
-    // M3 library cross-fades its position for you instead of teleporting it.
+    // state so the menu and profile reappear in sync after collapse.
     val inputField: @Composable () -> Unit = {
         SearchBarDefaults.InputField(
             query = query,
@@ -437,23 +431,18 @@ private fun HomeTopBar(
                     // rather than happening before it (too early) or after (too late).
                     // LinearEasing keeps the opacity ramp perfectly neutral so neither
                     // icon "pops" while the other is still visible.
-                    Crossfade(
-                        targetState = iconCrossoverReached,
-                        animationSpec = tween(durationMillis = 120, easing = LinearEasing),
-                    ) { showBack ->
-                        Icon(
-                            imageVector = if (showBack) {
-                                Icons.AutoMirrored.Outlined.ArrowBack
-                            } else {
-                                Icons.Outlined.Menu
-                            },
-                            contentDescription = if (showBack) {
-                                "Close search"
-                            } else {
-                                "Open navigation drawer"
-                            },
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isSearchExpanded) {
+                            Icons.AutoMirrored.Outlined.ArrowBack
+                        } else {
+                            Icons.Outlined.Menu
+                        },
+                        contentDescription = if (isSearchExpanded) {
+                            "Close search"
+                        } else {
+                            "Open navigation drawer"
+                        },
+                    )
                 }
             },
             trailingIcon = {
@@ -465,8 +454,8 @@ private fun HomeTopBar(
                     // icon fades between states rather than hard-swapping.
                     AnimatedContent(
                         targetState = when {
-                            isSearchTransitionActive && query.isNotBlank() -> TrailingIconState.CLEAR
-                            !isSearchTransitionActive -> TrailingIconState.PROFILE
+                            isSearchExpanded && query.isNotBlank() -> TrailingIconState.CLEAR
+                            !isSearchExpanded -> TrailingIconState.PROFILE
                             else -> TrailingIconState.NONE
                         },
                         label = "trailingIcon",
