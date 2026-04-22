@@ -2,8 +2,11 @@ package com.example.savex.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.CubicBezierEasing
@@ -11,6 +14,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -115,6 +120,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.view.animation.OvershootInterpolator
+import androidx.compose.animation.core.Easing
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -132,7 +141,11 @@ private const val PROFILE_AVATAR_URL = "https://api.dicebear.com/9.x/avataaars/p
 private const val HOME_SEARCH_BAR_BOUNDS_KEY = "home_search_bar_bounds"
 private const val HOME_SEARCH_LEADING_KEY = "home_search_leading"
 private const val HOME_SEARCH_TRAILING_KEY = "home_search_trailing"
+private const val TAB_SWITCH_DURATION_MS = 280
 private val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+private val TabPopEasing = Easing { fraction ->
+    OvershootInterpolator(1.5f).getInterpolation(fraction)
+}
 
 private data class TopLevelDestination(
     val route: String,
@@ -152,6 +165,7 @@ private val topLevelDestinations = listOf(
     TopLevelDestination(ROUTE_COLLECTIONS, "Collections", Icons.Outlined.Folder, Icons.Filled.Folder),
     TopLevelDestination(ROUTE_ARCHIVED, "Archived", Icons.Outlined.Archive, Icons.Filled.Archive),
 )
+private val topLevelRoutes = topLevelDestinations.mapTo(mutableSetOf()) { it.route }
 
 private val drawerDestinations = listOf(
     DrawerDestination("Tags", Icons.AutoMirrored.Outlined.Label),
@@ -175,6 +189,41 @@ private val homeSearchCatalog = listOf(
     "Collections",
     "Archived",
 )
+
+private fun NavDestination.isTopLevelTabDestination(): Boolean =
+    hierarchy.any { destination -> destination.route in topLevelRoutes }
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTopLevelTabSwitch(): Boolean =
+    initialState.destination.isTopLevelTabDestination() &&
+        targetState.destination.isTopLevelTabDestination()
+
+private fun tabSwitchEnterTransition(): EnterTransition =
+    fadeIn(
+        animationSpec = tween(
+            durationMillis = TAB_SWITCH_DURATION_MS,
+            easing = FastOutSlowInEasing,
+        ),
+    ) + scaleIn(
+        initialScale = 0.95f,
+        animationSpec = tween(
+            durationMillis = TAB_SWITCH_DURATION_MS,
+            easing = TabPopEasing,
+        ),
+    )
+
+private fun tabSwitchExitTransition(): ExitTransition =
+    fadeOut(
+        animationSpec = tween(
+            durationMillis = TAB_SWITCH_DURATION_MS,
+            easing = FastOutSlowInEasing,
+        ),
+    ) + scaleOut(
+        targetScale = 0.95f,
+        animationSpec = tween(
+            durationMillis = TAB_SWITCH_DURATION_MS,
+            easing = FastOutSlowInEasing,
+        ),
+    )
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -311,6 +360,34 @@ fun SaveXApp(
                             navController = navController,
                             startDestination = ROUTE_HOME,
                             modifier = Modifier.padding(innerPadding),
+                            enterTransition = {
+                                if (isTopLevelTabSwitch()) {
+                                    tabSwitchEnterTransition()
+                                } else {
+                                    EnterTransition.None
+                                }
+                            },
+                            exitTransition = {
+                                if (isTopLevelTabSwitch()) {
+                                    tabSwitchExitTransition()
+                                } else {
+                                    ExitTransition.None
+                                }
+                            },
+                            popEnterTransition = {
+                                if (isTopLevelTabSwitch()) {
+                                    tabSwitchEnterTransition()
+                                } else {
+                                    EnterTransition.None
+                                }
+                            },
+                            popExitTransition = {
+                                if (isTopLevelTabSwitch()) {
+                                    tabSwitchExitTransition()
+                                } else {
+                                    ExitTransition.None
+                                }
+                            },
                         ) {
                             composable(ROUTE_HOME) {
                                 HomeScreen(modifier = Modifier.fillMaxSize())
