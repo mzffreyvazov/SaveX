@@ -249,9 +249,13 @@ fun SaveXApp(
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    val isSaveRoute = currentDestination?.route == ROUTE_SAVE
 
     LaunchedEffect(currentDestination?.route) {
         isFabMenuExpanded = false
+        if (isSaveRoute) {
+            isHomeSearchExpanded = false
+        }
     }
 
     LaunchedEffect(isHomeSearchExpanded) {
@@ -305,54 +309,58 @@ fun SaveXApp(
                     containerColor = MaterialTheme.colorScheme.background,
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                     topBar = {
-                        SharedHomeTopBar(
-                            query = homeSearchQuery,
-                            expanded = isHomeSearchExpanded,
-                            onQueryChange = { homeSearchQuery = it },
-                            onExpandedChange = { isHomeSearchExpanded = it },
-                            onOpenDrawer = { scope.launch { drawerState.open() } },
-                            onProfileClick = { },
-                            sharedTransitionScope = this@SharedTransitionLayout,
-                        )
+                        if (!isSaveRoute) {
+                            SharedHomeTopBar(
+                                query = homeSearchQuery,
+                                expanded = isHomeSearchExpanded,
+                                onQueryChange = { homeSearchQuery = it },
+                                onExpandedChange = { isHomeSearchExpanded = it },
+                                onOpenDrawer = { scope.launch { drawerState.open() } },
+                                onProfileClick = { },
+                                sharedTransitionScope = this@SharedTransitionLayout,
+                            )
+                        }
                     },
                     bottomBar = {
-                        ShortNavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                        ) {
-                            topLevelDestinations.forEach { destination ->
-                                val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
-                                ShortNavigationBarItem(
-                                    selected = selected,
-                                    onClick = {
-                                        isFabMenuExpanded = false
-                                        navController.navigate(destination.route) {
-                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
-                                    colors = ShortNavigationBarItemDefaults.colors(
-                                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        selectedIndicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                    ),
-                                    icon = {
-                                        Icon(
-                                            imageVector = if (selected) destination.selectedIcon else destination.icon,
-                                            contentDescription = destination.title,
-                                        )
-                                    },
-                                    label = {
-                                        Text(
-                                            text = destination.title,
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                            ),
-                                        )
-                                    },
-                                )
+                        if (!isSaveRoute) {
+                            ShortNavigationBar(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                            ) {
+                                topLevelDestinations.forEach { destination ->
+                                    val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                                    ShortNavigationBarItem(
+                                        selected = selected,
+                                        onClick = {
+                                            isFabMenuExpanded = false
+                                            navController.navigate(destination.route) {
+                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        },
+                                        colors = ShortNavigationBarItemDefaults.colors(
+                                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            selectedIndicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                        ),
+                                        icon = {
+                                            Icon(
+                                                imageVector = if (selected) destination.selectedIcon else destination.icon,
+                                                contentDescription = destination.title,
+                                            )
+                                        },
+                                        label = {
+                                            Text(
+                                                text = destination.title,
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                                ),
+                                            )
+                                        },
+                                    )
+                                }
                             }
                         }
                     },
@@ -406,7 +414,25 @@ fun SaveXApp(
                             composable(ROUTE_SAVE) {
                                 SaveScreen(
                                     initialSharedText = sharedText,
+                                    onClose = {
+                                        if (!navController.popBackStack()) {
+                                            navController.navigate(ROUTE_HOME) {
+                                                popUpTo(navController.graph.startDestinationId)
+                                                launchSingleTop = true
+                                            }
+                                        }
+                                    },
+                                    onPrimaryActionClick = {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Create flow is ready for wiring.")
+                                        }
+                                    },
                                     onCreateCollection = { showCreateCollectionDialog = true },
+                                    onReviewScheduleClick = {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Review schedule picker is ready for wiring.")
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -421,7 +447,7 @@ fun SaveXApp(
                             )
                         }
 
-                        if (!isHomeSearchExpanded) {
+                        if (!isHomeSearchExpanded && !isSaveRoute) {
                             HomeFabMenu(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
@@ -443,14 +469,16 @@ fun SaveXApp(
                     }
                 }
 
-                SharedHomeSearchOverlay(
-                    query = homeSearchQuery,
-                    expanded = isHomeSearchExpanded,
-                    onQueryChange = { homeSearchQuery = it },
-                    onExpandedChange = { isHomeSearchExpanded = it },
-                    onProfileClick = { },
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                )
+                if (!isSaveRoute) {
+                    SharedHomeSearchOverlay(
+                        query = homeSearchQuery,
+                        expanded = isHomeSearchExpanded,
+                        onQueryChange = { homeSearchQuery = it },
+                        onExpandedChange = { isHomeSearchExpanded = it },
+                        onProfileClick = { },
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                    )
+                }
             }
         }
     }
