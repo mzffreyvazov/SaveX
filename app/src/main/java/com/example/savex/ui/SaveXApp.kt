@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -36,6 +37,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -70,6 +74,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExpandedFullScreenContainedSearchBar
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -78,6 +83,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
@@ -94,9 +100,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberSearchBarState
@@ -136,7 +144,6 @@ private const val ROUTE_HOME = "home"
 private const val ROUTE_STARRED = "starred"
 private const val ROUTE_COLLECTIONS = "collections"
 private const val ROUTE_ARCHIVED = "archived"
-private const val ROUTE_SAVE = "save"
 private const val PROFILE_AVATAR_URL = "https://api.dicebear.com/9.x/avataaars/png?seed=Felix&size=96"
 private const val HOME_SEARCH_BAR_BOUNDS_KEY = "home_search_bar_bounds"
 private const val HOME_SEARCH_LEADING_KEY = "home_search_leading"
@@ -243,18 +250,36 @@ fun SaveXApp(
     val scope = rememberCoroutineScope()
 
     var showCreateCollectionDialog by rememberSaveable { mutableStateOf(false) }
+    var showSaveSheet by rememberSaveable { mutableStateOf(false) }
+    var saveSheetInitialSharedText by rememberSaveable { mutableStateOf<String?>(null) }
+    var allowSaveSheetPartialExpand by rememberSaveable { mutableStateOf(false) }
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var homeSearchQuery by rememberSaveable { mutableStateOf("") }
     var isHomeSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    val saveSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = false,
+        confirmValueChange = { nextValue ->
+            nextValue != SheetValue.PartiallyExpanded || allowSaveSheetPartialExpand
+        },
+    )
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
-    val isSaveRoute = currentDestination?.route == ROUTE_SAVE
 
     LaunchedEffect(currentDestination?.route) {
         isFabMenuExpanded = false
-        if (isSaveRoute) {
-            isHomeSearchExpanded = false
+    }
+
+    LaunchedEffect(showSaveSheet) {
+        if (showSaveSheet) {
+            isFabMenuExpanded = false
+            saveSheetState.expand()
+        }
+    }
+
+    LaunchedEffect(showSaveSheet, saveSheetState.currentValue) {
+        if (showSaveSheet && saveSheetState.currentValue == SheetValue.Expanded) {
+            allowSaveSheetPartialExpand = true
         }
     }
 
@@ -270,7 +295,9 @@ fun SaveXApp(
 
     LaunchedEffect(sharedText) {
         if (!sharedText.isNullOrBlank()) {
-            navController.navigate(ROUTE_SAVE)
+            saveSheetInitialSharedText = sharedText
+            allowSaveSheetPartialExpand = false
+            showSaveSheet = true
             snackbarHostState.showSnackbar("Shared content loaded into Save.")
             onSharedTextConsumed()
         }
@@ -309,58 +336,54 @@ fun SaveXApp(
                     containerColor = MaterialTheme.colorScheme.background,
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                     topBar = {
-                        if (!isSaveRoute) {
-                            SharedHomeTopBar(
-                                query = homeSearchQuery,
-                                expanded = isHomeSearchExpanded,
-                                onQueryChange = { homeSearchQuery = it },
-                                onExpandedChange = { isHomeSearchExpanded = it },
-                                onOpenDrawer = { scope.launch { drawerState.open() } },
-                                onProfileClick = { },
-                                sharedTransitionScope = this@SharedTransitionLayout,
-                            )
-                        }
+                        SharedHomeTopBar(
+                            query = homeSearchQuery,
+                            expanded = isHomeSearchExpanded,
+                            onQueryChange = { homeSearchQuery = it },
+                            onExpandedChange = { isHomeSearchExpanded = it },
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onProfileClick = { },
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                        )
                     },
                     bottomBar = {
-                        if (!isSaveRoute) {
-                            ShortNavigationBar(
-                                containerColor = MaterialTheme.colorScheme.surface,
-                            ) {
-                                topLevelDestinations.forEach { destination ->
-                                    val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
-                                    ShortNavigationBarItem(
-                                        selected = selected,
-                                        onClick = {
-                                            isFabMenuExpanded = false
-                                            navController.navigate(destination.route) {
-                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        },
-                                        colors = ShortNavigationBarItemDefaults.colors(
-                                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            selectedIndicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                        ),
-                                        icon = {
-                                            Icon(
-                                                imageVector = if (selected) destination.selectedIcon else destination.icon,
-                                                contentDescription = destination.title,
-                                            )
-                                        },
-                                        label = {
-                                            Text(
-                                                text = destination.title,
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                                ),
-                                            )
-                                        },
-                                    )
-                                }
+                        ShortNavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ) {
+                            topLevelDestinations.forEach { destination ->
+                                val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                                ShortNavigationBarItem(
+                                    selected = selected,
+                                    onClick = {
+                                        isFabMenuExpanded = false
+                                        navController.navigate(destination.route) {
+                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    colors = ShortNavigationBarItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        selectedIndicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    ),
+                                    icon = {
+                                        Icon(
+                                            imageVector = if (selected) destination.selectedIcon else destination.icon,
+                                            contentDescription = destination.title,
+                                        )
+                                    },
+                                    label = {
+                                        Text(
+                                            text = destination.title,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                            ),
+                                        )
+                                    },
+                                )
                             }
                         }
                     },
@@ -411,30 +434,6 @@ fun SaveXApp(
                             composable(ROUTE_ARCHIVED) {
                                 ArchiveScreen(modifier = Modifier.fillMaxSize())
                             }
-                            composable(ROUTE_SAVE) {
-                                SaveScreen(
-                                    initialSharedText = sharedText,
-                                    onClose = {
-                                        if (!navController.popBackStack()) {
-                                            navController.navigate(ROUTE_HOME) {
-                                                popUpTo(navController.graph.startDestinationId)
-                                                launchSingleTop = true
-                                            }
-                                        }
-                                    },
-                                    onPrimaryActionClick = {
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Create flow is ready for wiring.")
-                                        }
-                                    },
-                                    onCreateCollection = { showCreateCollectionDialog = true },
-                                    onReviewScheduleClick = {
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Review schedule picker is ready for wiring.")
-                                        }
-                                    },
-                                )
-                            }
                         }
 
                         if (isFabMenuExpanded) {
@@ -447,7 +446,7 @@ fun SaveXApp(
                             )
                         }
 
-                        if (!isHomeSearchExpanded && !isSaveRoute) {
+                        if (!isHomeSearchExpanded) {
                             HomeFabMenu(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
@@ -460,24 +459,63 @@ fun SaveXApp(
                                 },
                                 onSaveClick = {
                                     isFabMenuExpanded = false
-                                    if (currentDestination?.route != ROUTE_SAVE) {
-                                        navController.navigate(ROUTE_SAVE)
-                                    }
+                                    saveSheetInitialSharedText = null
+                                    allowSaveSheetPartialExpand = false
+                                    showSaveSheet = true
                                 },
                             )
                         }
                     }
                 }
 
-                if (!isSaveRoute) {
-                    SharedHomeSearchOverlay(
-                        query = homeSearchQuery,
-                        expanded = isHomeSearchExpanded,
-                        onQueryChange = { homeSearchQuery = it },
-                        onExpandedChange = { isHomeSearchExpanded = it },
-                        onProfileClick = { },
-                        sharedTransitionScope = this@SharedTransitionLayout,
-                    )
+                SharedHomeSearchOverlay(
+                    query = homeSearchQuery,
+                    expanded = isHomeSearchExpanded,
+                    onQueryChange = { homeSearchQuery = it },
+                    onExpandedChange = { isHomeSearchExpanded = it },
+                    onProfileClick = { },
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                )
+
+                if (showSaveSheet) {
+                    val sheetTopInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                    ModalBottomSheet(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(top = sheetTopInset),
+                        onDismissRequest = {
+                            showSaveSheet = false
+                            saveSheetInitialSharedText = null
+                            allowSaveSheetPartialExpand = false
+                        },
+                        sheetState = saveSheetState,
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+                        dragHandle = {
+                            BottomSheetDefaults.DragHandle()
+                        },
+                    ) {
+                        SaveScreen(
+                            initialSharedText = saveSheetInitialSharedText,
+                            onClose = {
+                                showSaveSheet = false
+                                saveSheetInitialSharedText = null
+                                allowSaveSheetPartialExpand = false
+                            },
+                            onPrimaryActionClick = {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Save flow is ready for wiring.")
+                                }
+                            },
+                            onCreateCollection = { showCreateCollectionDialog = true },
+                            onReviewScheduleClick = {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Review schedule picker is ready for wiring.")
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }

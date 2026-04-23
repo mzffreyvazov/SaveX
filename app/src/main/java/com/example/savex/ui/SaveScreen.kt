@@ -9,15 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -48,12 +45,8 @@ import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -125,8 +118,6 @@ fun SaveScreen(
                 onPrimaryActionClick = onPrimaryActionClick,
             )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -136,60 +127,57 @@ fun SaveScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 item {
-                    OutlinedTextField(
+                    UrlInputField(
                         value = url,
                         onValueChange = { url = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("https://") },
-                        leadingIcon = { Icon(Icons.Outlined.Link, contentDescription = null) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            focusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
-                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
-                            focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
                     )
                 }
 
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TextField(
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        BasicTextField(
                             value = title,
                             onValueChange = { title = it },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = {
-                                Text(
-                                    text = "Title",
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                )
+                            textStyle = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            decorationBox = { innerTextField ->
+                                if (title.isBlank()) {
+                                    Text(
+                                        text = "Title",
+                                        style = MaterialTheme.typography.headlineLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                        ),
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
+                                }
+                                innerTextField()
                             },
-                            textStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                            colors = borderlessFieldColors(),
                         )
 
-                        TextField(
+                        BasicTextField(
                             value = notes,
                             onValueChange = { notes = it },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = {
-                                Text(
-                                    text = "Add notes, highlights, or your thoughts...",
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                )
-                            },
-                            textStyle = MaterialTheme.typography.bodyLarge,
-                            colors = borderlessFieldColors(),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             minLines = 6,
+                            decorationBox = { innerTextField ->
+                                if (notes.isBlank()) {
+                                    Text(
+                                        text = "Add notes, highlights, or your thoughts...",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
+                                }
+                                innerTextField()
+                            },
                         )
                     }
                 }
@@ -234,13 +222,13 @@ fun SaveScreen(
                 }
 
                 item {
+                    val sectionBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         SaveSectionLabel(text = "Tags")
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)),
-                            shadowElevation = 1.dp,
+                            border = BorderStroke(1.dp, sectionBorderColor),
                         ) {
                             FlowRow(
                                 modifier = Modifier
@@ -318,6 +306,7 @@ fun SaveScreen(
                     SaveOrganizationGroup(
                         collectionLabel = "Dev Resources",
                         reviewScheduleLabel = "Smart Spaced",
+                        borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
                         onCollectionClick = onCreateCollection,
                         onReviewScheduleClick = onReviewScheduleClick,
                     )
@@ -336,8 +325,7 @@ private fun SaveHeader(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -358,7 +346,7 @@ private fun SaveHeader(
             ),
         ) {
             Text(
-                text = "Create",
+                text = "Save",
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
             )
         }
@@ -380,6 +368,7 @@ private fun SaveSectionLabel(
 private fun SaveOrganizationGroup(
     collectionLabel: String,
     reviewScheduleLabel: String,
+    borderColor: Color,
     onCollectionClick: () -> Unit,
     onReviewScheduleClick: () -> Unit,
 ) {
@@ -387,8 +376,7 @@ private fun SaveOrganizationGroup(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)),
-        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, borderColor),
     ) {
         Column {
             SaveOrganizationRow(
@@ -401,7 +389,7 @@ private fun SaveOrganizationGroup(
 
             HorizontalDivider(
                 modifier = Modifier.padding(start = 56.dp),
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
+                color = borderColor,
             )
 
             SaveOrganizationRow(
@@ -410,6 +398,61 @@ private fun SaveOrganizationGroup(
                 icon = Icons.Outlined.Schedule,
                 valueColor = MaterialTheme.colorScheme.primary,
                 onClick = onReviewScheduleClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UrlInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Link,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Uri,
+                    imeAction = ImeAction.Next,
+                ),
+                decorationBox = { innerTextField ->
+                    if (value.isBlank()) {
+                        Text(
+                            text = "https://",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                },
             )
         }
     }
@@ -507,17 +550,6 @@ private fun DashedCustomTypeChip(
         )
     }
 }
-
-@Composable
-private fun borderlessFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = Color.Transparent,
-    unfocusedContainerColor = Color.Transparent,
-    disabledContainerColor = Color.Transparent,
-    focusedIndicatorColor = Color.Transparent,
-    unfocusedIndicatorColor = Color.Transparent,
-    disabledIndicatorColor = Color.Transparent,
-    cursorColor = MaterialTheme.colorScheme.primary,
-)
 
 private fun detectInitialItemType(initialSharedText: String?): String {
     val value = initialSharedText.orEmpty().lowercase()
