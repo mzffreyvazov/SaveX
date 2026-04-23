@@ -74,7 +74,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExpandedFullScreenContainedSearchBar
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -493,7 +492,20 @@ fun SaveXApp(
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
                         dragHandle = {
-                            BottomSheetDefaults.DragHandle()
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp, bottom = 3.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(34.dp)
+                                        .height(4.dp)
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f)),
+                                )
+                            }
                         },
                     ) {
                         SaveScreen(
