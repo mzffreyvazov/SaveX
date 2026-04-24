@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,6 +62,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -187,6 +189,7 @@ fun SaveScreen(
                         SaveSectionLabel(text = "Content type")
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             defaultItemTypes.forEach { type ->
@@ -515,6 +518,7 @@ private fun DashedCustomTypeChip(
         modifier = Modifier
             .clip(chipShape)
             .clickable(onClick = onClick)
+            .height(32.dp)
             .drawBehind {
                 val strokeWidth = 1.dp.toPx()
                 val corner = 12.dp.toPx()
@@ -524,14 +528,15 @@ private fun DashedCustomTypeChip(
                     cornerRadius = CornerRadius(corner, corner),
                     style = Stroke(
                         width = strokeWidth,
+                        cap = StrokeCap.Round,
                         pathEffect = PathEffect.dashPathEffect(
-                            intervals = floatArrayOf(8.dp.toPx(), 6.dp.toPx()),
+                            intervals = floatArrayOf(2.dp.toPx(), 4.dp.toPx()),
                             phase = 0f,
                         ),
                     ),
                 )
             }
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
