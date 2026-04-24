@@ -167,7 +167,7 @@ fun SaveScreen(
                                 color = MaterialTheme.colorScheme.onSurface,
                             ),
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            minLines = 6,
+                            minLines = 10,
                             decorationBox = { innerTextField ->
                                 if (notes.isBlank()) {
                                     Text(
