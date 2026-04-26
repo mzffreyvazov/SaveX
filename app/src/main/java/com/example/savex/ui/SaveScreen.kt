@@ -49,15 +49,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -65,11 +69,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 private data class ItemTypeUi(
     val title: String,
@@ -98,6 +104,16 @@ fun SaveScreen(
     var tagInput by rememberSaveable { mutableStateOf("") }
     var selectedType by rememberSaveable(initialSharedText) {
         mutableStateOf(detectInitialItemType(initialSharedText))
+    }
+    val urlFocusRequester = remember { FocusRequester() }
+    val tagInputFocusRequester = remember { FocusRequester() }
+    val tagsContainerInteractionSource = remember { MutableInteractionSource() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        delay(150)
+        urlFocusRequester.requestFocus()
+        keyboardController?.show()
     }
 
     val addTag = remember(tagInput, tags) {
@@ -132,6 +148,7 @@ fun SaveScreen(
                     UrlInputField(
                         value = url,
                         onValueChange = { url = it },
+                        focusRequester = urlFocusRequester,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -229,6 +246,15 @@ fun SaveScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         SaveSectionLabel(text = "Tags")
                         Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = tagsContainerInteractionSource,
+                                    indication = null,
+                                ) {
+                                    tagInputFocusRequester.requestFocus()
+                                    keyboardController?.show()
+                                },
                             shape = RoundedCornerShape(20.dp),
                             color = MaterialTheme.colorScheme.surface,
                             border = BorderStroke(1.dp, sectionBorderColor),
@@ -278,7 +304,8 @@ fun SaveScreen(
                                     },
                                     modifier = Modifier
                                         .widthIn(min = 96.dp)
-                                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                                        .padding(horizontal = 4.dp, vertical = 8.dp)
+                                        .focusRequester(tagInputFocusRequester),
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                                         color = MaterialTheme.colorScheme.onSurface,
                                     ),
@@ -410,6 +437,7 @@ private fun SaveOrganizationGroup(
 private fun UrlInputField(
     value: String,
     onValueChange: (String) -> Unit,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -436,7 +464,8 @@ private fun UrlInputField(
                 onValueChange = onValueChange,
                 modifier = Modifier
                     .weight(1f)
-                    .horizontalScroll(rememberScrollState()),
+                    .horizontalScroll(rememberScrollState())
+                    .focusRequester(focusRequester),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                 ),
