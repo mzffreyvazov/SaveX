@@ -536,9 +536,9 @@ private fun DashedCustomTypeChip(
                     ),
                 )
             }
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Icon(
             imageVector = Icons.Outlined.Add,
